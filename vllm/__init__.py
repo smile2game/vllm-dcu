@@ -7,6 +7,7 @@ from vllm.engine.ray_utils import initialize_cluster
 from vllm.entrypoints.llm import LLM
 from vllm.outputs import CompletionOutput, RequestOutput
 from vllm.sampling_params import SamplingParams
+from vllm.version import __dcu_version__
 
 __version__ = "0.2.6"
 
