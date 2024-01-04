@@ -694,8 +694,8 @@ void paged_attention_v1(
     CALL_V1_LAUNCHER_BLOCK_SIZE(float);
   } else if (query.dtype() == at::ScalarType::Half) {
     CALL_V1_LAUNCHER_BLOCK_SIZE(uint16_t);
-  } else if (query.dtype() == at::ScalarType::BFloat16) {
-    CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16);
+  // } else if (query.dtype() == at::ScalarType::BFloat16) {
+  //   CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16);
   } else {
     TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
   }
@@ -869,8 +869,8 @@ void paged_attention_v2(
     CALL_V2_LAUNCHER_BLOCK_SIZE(float);
   } else if (query.dtype() == at::ScalarType::Half) {
     CALL_V2_LAUNCHER_BLOCK_SIZE(uint16_t);
-  } else if (query.dtype() == at::ScalarType::BFloat16) {
-    CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16);
+  // } else if (query.dtype() == at::ScalarType::BFloat16) {
+  //   CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16);
   } else {
     TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
   }

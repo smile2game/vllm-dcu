@@ -10,13 +10,17 @@ import setuptools
 import torch
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME, ROCM_HOME
 
+from typing import Optional, Union
+import subprocess
+from pathlib import Path
+
 ROOT_DIR = os.path.dirname(__file__)
 
 MAIN_CUDA_VERSION = "12.1"
 
 # Supported NVIDIA GPU architectures.
 NVIDIA_SUPPORTED_ARCHS = {"7.0", "7.5", "8.0", "8.6", "8.9", "9.0"}
-ROCM_SUPPORTED_ARCHS = {"gfx90a", "gfx908", "gfx906", "gfx1030", "gfx1100"}
+ROCM_SUPPORTED_ARCHS = {"gfx90a", "gfx908", "gfx906",  "gfx926","gfx1030", "gfx1100"}
 # SUPPORTED_ARCHS = NVIDIA_SUPPORTED_ARCHS.union(ROCM_SUPPORTED_ARCHS)
 
 
@@ -31,7 +35,7 @@ def _is_cuda() -> bool:
 # Compiler flags.
 CXX_FLAGS = ["-g", "-O2", "-std=c++17"]
 # TODO(woosuk): Should we use -O3?
-NVCC_FLAGS = ["-O2", "-std=c++17"]
+NVCC_FLAGS = ["-O2", "-std=c++17","--gpu-max-threads-per-block=1024"]
 
 if _is_hip():
     if ROCM_HOME is None:
@@ -49,20 +53,20 @@ CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
 NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
 
 
-def get_amdgpu_offload_arch():
-    command = "/opt/rocm/llvm/bin/amdgpu-offload-arch"
-    try:
-        output = subprocess.check_output([command])
-        return output.decode('utf-8').strip()
-    except subprocess.CalledProcessError as e:
-        error_message = f"Error: {e}"
-        raise RuntimeError(error_message) from e
-    except FileNotFoundError as e:
-        # If the command is not found, print an error message
-        error_message = f"The command {command} was not found."
-        raise RuntimeError(error_message) from e
+# def get_amdgpu_offload_arch():
+#     command = "/opt/rocm/llvm/bin/amdgpu-offload-arch"
+#     try:
+#         output = subprocess.check_output([command])
+#         return output.decode('utf-8').strip()
+#     except subprocess.CalledProcessError as e:
+#         error_message = f"Error: {e}"
+#         raise RuntimeError(error_message) from e
+#     except FileNotFoundError as e:
+#         # If the command is not found, print an error message
+#         error_message = f"The command {command} was not found."
+#         raise RuntimeError(error_message) from e
 
-    return None
+#     return None
 
 
 def get_hipcc_rocm_version():
@@ -203,12 +207,12 @@ if _is_cuda():
         num_threads = min(os.cpu_count(), nvcc_threads)
         NVCC_FLAGS += ["--threads", str(num_threads)]
 
-elif _is_hip():
-    amd_arch = get_amdgpu_offload_arch()
-    if amd_arch not in ROCM_SUPPORTED_ARCHS:
-        raise RuntimeError(
-            f"Only the following arch is supported: {ROCM_SUPPORTED_ARCHS}"
-            f"amdgpu_arch_found: {amd_arch}")
+# elif _is_hip():
+#     amd_arch = get_amdgpu_offload_arch()
+#     if amd_arch not in ROCM_SUPPORTED_ARCHS:
+#         raise RuntimeError(
+#             f"Only the following arch is supported: {ROCM_SUPPORTED_ARCHS}"
+#             f"amdgpu_arch_found: {amd_arch}")
 
 ext_modules = []
 
@@ -255,15 +259,70 @@ def find_version(filepath: str) -> str:
         raise RuntimeError("Unable to find version string.")
 
 
+def get_abi():
+    try:
+        command = "echo '#include <string>' | gcc -x c++ -E -dM - | fgrep _GLIBCXX_USE_CXX11_ABI" 
+        result = subprocess.run(command, shell=True, capture_output=True, text=True) 
+        output = result.stdout.strip() 
+        abi = "abi" + output.split(" ")[-1]
+        return abi
+    except Exception:
+        return 'abiUnknown'
+
+
+def get_sha(root: Union[str, Path]) -> str:
+    try:
+        return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root).decode('ascii').strip()
+    except Exception:
+        return 'Unknown'
+
+def get_version_add(sha: Optional[str] = None) -> str:
+    vllm_root = os.path.dirname(os.path.abspath(__file__))
+    add_version_path = os.path.join(os.path.join(vllm_root, "vllm"), "version.py")
+    if sha != 'Unknown':
+        if sha is None:
+            sha = get_sha(vllm_root)
+        version = 'git' + sha[:7]
+
+    # abi version
+    version += "." + get_abi()
+
+    # dtk version
+    if os.getenv("ROCM_PATH"):
+        rocm_path = os.getenv('ROCM_PATH', "")
+        rocm_version_path = os.path.join(rocm_path, '.info', "rocm_version")
+        with open(rocm_version_path, 'r',encoding='utf-8') as file:
+            lines = file.readlines()
+        rocm_version=lines[0][:-2].replace(".", "")
+        version += ".dtk" + rocm_version
+
+    # torch version
+    version += ".torch" + torch.__version__[:3]
+
+    with open(add_version_path, encoding="utf-8",mode="w") as file:
+        file.write("__version__='0.2.7'\n")
+        file.write("__dcu_version__='0.2.7+{}'\n".format(version))
+    file.close()
+    
+    
+def get_version():
+    get_version_add()
+    version_file = 'vllm/version.py'
+    with open(version_file, encoding='utf-8') as f:
+        exec(compile(f.read(), version_file, 'exec'))
+    return locals()['__dcu_version__']
+
+
 def get_vllm_version() -> str:
     version = find_version(get_path("vllm", "__init__.py"))
 
     if _is_hip():
         # Get the HIP version
-        hipcc_version = get_hipcc_rocm_version()
-        if hipcc_version != MAIN_CUDA_VERSION:
-            rocm_version_str = hipcc_version.replace(".", "")[:3]
-            version += f"+rocm{rocm_version_str}"
+        # hipcc_version = get_hipcc_rocm_version()
+        # if hipcc_version != MAIN_CUDA_VERSION:
+        #     rocm_version_str = hipcc_version.replace(".", "")[:3]
+        #     version += f"+rocm{rocm_version_str}"
+        version = get_version()
     else:
         cuda_version = str(nvcc_cuda_version)
         if cuda_version != MAIN_CUDA_VERSION:
