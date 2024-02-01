@@ -9,7 +9,7 @@ from vllm.outputs import CompletionOutput, RequestOutput
 from vllm.sampling_params import SamplingParams
 from vllm.version import __dcu_version__
 
-__version__ = "0.2.7"
+__version__ = "0.3.0"
 
 __all__ = [
     "LLM",
