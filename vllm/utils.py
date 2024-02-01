@@ -26,9 +26,9 @@ logger = init_logger(__name__)
 
 STR_DTYPE_TO_TORCH_DTYPE = {
     "half": torch.half,
-    "bfloat16": torch.bfloat16,
+    # "bfloat16": torch.bfloat16,
     "float": torch.float,
-    "fp8_e5m2": torch.uint8,
+    # "fp8_e5m2": torch.uint8,
 }
 
 

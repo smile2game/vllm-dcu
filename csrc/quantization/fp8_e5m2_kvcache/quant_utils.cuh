@@ -7,7 +7,7 @@
 #include "../../attention/attention_dtypes.h"
 #include "../../attention/dtype_float32.cuh"
 #include "../../attention/dtype_float16.cuh"
-#include "../../attention/dtype_bfloat16.cuh"
+// #include "../../attention/dtype_bfloat16.cuh"
 
 #pragma once
 
