@@ -19,11 +19,16 @@ from pathlib import Path
 
 ROOT_DIR = os.path.dirname(__file__)
 
+# If you are developing the C++ backend of vLLM, consider building vLLM with
+# `python setup.py develop` since it will give you incremental builds.
+# The downside is that this method is deprecated, see
+# https://github.com/pypa/setuptools/issues/917
+
 MAIN_CUDA_VERSION = "12.1"
 
 # Supported NVIDIA GPU architectures.
 NVIDIA_SUPPORTED_ARCHS = {"7.0", "7.5", "8.0", "8.6", "8.9", "9.0"}
-ROCM_SUPPORTED_ARCHS = {"gfx90a", "gfx908", "gfx906", "gfx926","gfx1030", "gfx1100"}
+ROCM_SUPPORTED_ARCHS = {"gfx90a", "gfx942", "gfx926","gfx1100"}
 # SUPPORTED_ARCHS = NVIDIA_SUPPORTED_ARCHS.union(ROCM_SUPPORTED_ARCHS)
 
 
@@ -65,22 +70,6 @@ if _is_cuda() and CUDA_HOME is None:
 ABI = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
 CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
 NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
-
-
-def get_amdgpu_offload_arch():
-    command = "/opt/dtk-23.10/llvm/bin/amdgpu-offload-arch"
-    try:
-        output = subprocess.check_output([command])
-        return output.decode('utf-8').strip()
-    except subprocess.CalledProcessError as e:
-        error_message = f"Error: {e}"
-        raise RuntimeError(error_message) from e
-    except FileNotFoundError as e:
-        # If the command is not found, print an error message
-        error_message = f"The command {command} was not found."
-        raise RuntimeError(error_message) from e
-
-    return None
 
 
 def get_hipcc_rocm_version():
@@ -142,6 +131,50 @@ def get_nvcc_cuda_version(cuda_dir: str) -> Version:
     return nvcc_cuda_version
 
 
+def get_pytorch_rocm_arch() -> Set[str]:
+    """Get the cross section of Pytorch,and vllm supported gfx arches
+
+    ROCM can get the supported gfx architectures in one of two ways
+    Either through the PYTORCH_ROCM_ARCH env var, or output from
+    rocm_agent_enumerator.
+
+    In either case we can generate a list of supported arch's and
+    cross reference with VLLM's own ROCM_SUPPORTED_ARCHs.
+    """
+    env_arch_list = os.environ.get("PYTORCH_ROCM_ARCH", None)
+
+    # If we don't have PYTORCH_ROCM_ARCH specified pull the list from rocm_agent_enumerator
+    if env_arch_list is None:
+        command = "rocm_agent_enumerator"
+        env_arch_list = subprocess.check_output([command]).decode('utf-8')\
+                        .strip().replace("\n", ";")
+        arch_source_str = "rocm_agent_enumerator"
+    else:
+        arch_source_str = "PYTORCH_ROCM_ARCH env variable"
+
+    # List are separated by ; or space.
+    pytorch_rocm_arch = set(env_arch_list.replace(" ", ";").split(";"))
+
+    # Filter out the invalid architectures and print a warning.
+    arch_list = pytorch_rocm_arch.intersection(ROCM_SUPPORTED_ARCHS)
+
+    # If none of the specified architectures are valid, raise an error.
+    if not arch_list:
+        raise RuntimeError(
+            f"None of the ROCM architectures in {arch_source_str} "
+            f"({env_arch_list}) is supported. "
+            f"Supported ROCM architectures are: {ROCM_SUPPORTED_ARCHS}.")
+    invalid_arch_list = pytorch_rocm_arch - ROCM_SUPPORTED_ARCHS
+    if invalid_arch_list:
+        warnings.warn(
+            f"Unsupported ROCM architectures ({invalid_arch_list}) are "
+            f"excluded from the {arch_source_str} output "
+            f"({env_arch_list}). Supported ROCM architectures are: "
+            f"{ROCM_SUPPORTED_ARCHS}.",
+            stacklevel=2)
+    return arch_list
+
+
 def get_torch_arch_list() -> Set[str]:
     # TORCH_CUDA_ARCH_LIST can have one or more architectures,
     # e.g. "8.0" or "7.5,8.0,8.6+PTX". Here, the "8.6+PTX" option asks the
@@ -166,22 +199,27 @@ def get_torch_arch_list() -> Set[str]:
     # If none of the specified architectures are valid, raise an error.
     if not arch_list:
         raise RuntimeError(
-            "None of the CUDA/ROCM architectures in `TORCH_CUDA_ARCH_LIST` env "
+            "None of the CUDA architectures in `TORCH_CUDA_ARCH_LIST` env "
             f"variable ({env_arch_list}) is supported. "
-            f"Supported CUDA/ROCM architectures are: {valid_archs}.")
+            f"Supported CUDA architectures are: {valid_archs}.")
     invalid_arch_list = torch_arch_list - valid_archs
     if invalid_arch_list:
         warnings.warn(
-            f"Unsupported CUDA/ROCM architectures ({invalid_arch_list}) are "
+            f"Unsupported CUDA architectures ({invalid_arch_list}) are "
             "excluded from the `TORCH_CUDA_ARCH_LIST` env variable "
-            f"({env_arch_list}). Supported CUDA/ROCM architectures are: "
+            f"({env_arch_list}). Supported CUDA architectures are: "
             f"{valid_archs}.",
             stacklevel=2)
     return arch_list
 
 
-# First, check the TORCH_CUDA_ARCH_LIST environment variable.
-compute_capabilities = get_torch_arch_list()
+if _is_hip():
+    rocm_arches = get_pytorch_rocm_arch()
+    NVCC_FLAGS += ["--offload-arch=" + arch for arch in rocm_arches]
+else:
+    # First, check the TORCH_CUDA_ARCH_LIST environment variable.
+    compute_capabilities = get_torch_arch_list()
+
 if _is_cuda() and not compute_capabilities:
     # If TORCH_CUDA_ARCH_LIST is not defined or empty, target all available
     # GPUs on the current machine.
@@ -290,18 +328,6 @@ if _is_cuda():
                     "nvcc": NVCC_FLAGS_PUNICA,
                 },
             ))
-elif _is_hip():
-    amd_archs = os.getenv("GPU_ARCHS")
-    if amd_archs is None:
-        # amd_archs = get_amdgpu_offload_arch()
-        amd_archs = "gfx906;gfx926"
-    for arch in amd_archs.split(";"):
-        if arch not in ROCM_SUPPORTED_ARCHS:
-            raise RuntimeError(
-                f"Only the following arch is supported: {ROCM_SUPPORTED_ARCHS}"
-                f"amdgpu_arch_found: {arch}")
-        NVCC_FLAGS += [f"--offload-arch={arch}"]
-
 elif _is_neuron():
     neuronxcc_version = get_neuronxcc_version()
 
@@ -321,6 +347,17 @@ vllm_extension_sources = [
 if _is_cuda():
     vllm_extension_sources.append("csrc/quantization/awq/gemm_kernels.cu")
     vllm_extension_sources.append("csrc/custom_all_reduce.cu")
+
+    # Add MoE kernels.
+    ext_modules.append(
+        CUDAExtension(
+            name="vllm._moe_C",
+            sources=glob("csrc/moe/*.cu") + glob("csrc/moe/*.cpp"),
+            extra_compile_args={
+                "cxx": CXX_FLAGS,
+                "nvcc": NVCC_FLAGS,
+            },
+        ))
 
 if not _is_neuron():
     vllm_extension = CUDAExtension(
@@ -393,8 +430,8 @@ def get_version_add(sha: Optional[str] = None) -> str:
     version += ".torch" + torch.__version__[:3]
 
     with open(add_version_path, encoding="utf-8",mode="w") as file:
-        file.write("__version__='0.3.0'\n")
-        file.write("__dcu_version__='0.3.0+{}'\n".format(version))
+        file.write("__version__='0.3.1'\n")
+        file.write("__dcu_version__='0.3.1+{}'\n".format(version))
     file.close()
     
     
@@ -411,9 +448,9 @@ def get_vllm_version() -> str:
 
     if _is_hip():
         # Get the HIP version
-        # hipcc_version = get_hipcc_rocm_version()
-        # if hipcc_version != MAIN_CUDA_VERSION:
-        #     rocm_version_str = hipcc_version.replace(".", "")[:3]
+        hipcc_version = get_hipcc_rocm_version()
+        if hipcc_version != MAIN_CUDA_VERSION:
+            rocm_version_str = hipcc_version.replace(".", "")[:3]
         #     version += f"+rocm{rocm_version_str}"
         version = get_version()
     elif _is_neuron():
