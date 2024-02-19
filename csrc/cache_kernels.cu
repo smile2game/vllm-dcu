@@ -13,10 +13,10 @@
 #include <map>
 #include <vector>
 
-#ifdef USE_ROCM
-  #include <hip/hip_bf16.h>
-  typedef __hip_bfloat16 __nv_bfloat16;
-#endif
+// #ifdef USE_ROCM
+//   #include <hip/hip_bf16.h>
+//   typedef __hip_bfloat16 __nv_bfloat16;
+// #endif
 
 void swap_blocks(
   torch::Tensor& src,
