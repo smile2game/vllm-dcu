@@ -28,7 +28,7 @@ MAIN_CUDA_VERSION = "12.1"
 
 # Supported NVIDIA GPU architectures.
 NVIDIA_SUPPORTED_ARCHS = {"7.0", "7.5", "8.0", "8.6", "8.9", "9.0"}
-ROCM_SUPPORTED_ARCHS = {"gfx90a", "gfx942", "gfx926","gfx1100"}
+ROCM_SUPPORTED_ARCHS = {"gfx908", "gfx90a", "gfx926", "gfx942", "gfx1100"}
 # SUPPORTED_ARCHS = NVIDIA_SUPPORTED_ARCHS.union(ROCM_SUPPORTED_ARCHS)
 
 
@@ -430,8 +430,8 @@ def get_version_add(sha: Optional[str] = None) -> str:
     version += ".torch" + torch.__version__[:3]
 
     with open(add_version_path, encoding="utf-8",mode="w") as file:
-        file.write("__version__='0.3.1'\n")
-        file.write("__dcu_version__='0.3.1+{}'\n".format(version))
+        file.write("__version__='0.3.2'\n")
+        file.write("__dcu_version__='0.3.2+{}'\n".format(version))
     file.close()
     
     
