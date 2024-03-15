@@ -31,7 +31,8 @@ git clone https://developer.hpccube.com/codes/aicomponent/vllm # 根据需要的
 ```
 1. 编译whl包并安装
 python setup.py bdist_wheel 
-pip install dist/vllm*
+cd dist
+pip install vllm*
 
 2. 源码编译安装
 python3 setup.py install 
