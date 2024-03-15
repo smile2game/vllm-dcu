@@ -432,8 +432,8 @@ def get_version_add(sha: Optional[str] = None) -> str:
     version += ".torch" + torch.__version__[:3]
 
     with open(add_version_path, encoding="utf-8",mode="w") as file:
-        file.write("__version__='0.3.2'\n")
-        file.write("__dcu_version__='0.3.2+{}'\n".format(version))
+        file.write("__version__='0.3.3'\n")
+        file.write("__dcu_version__='0.3.3+{}'\n".format(version))
     file.close()
     
     
