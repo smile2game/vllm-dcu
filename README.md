@@ -1,6 +1,6 @@
 # <div align="center"><strong>vLLM</strong></div>
 ## 简介
-vLLM是一个快速且易于使用的LLM推理和服务库，使用PageAttention高效管理kv内存，Continuous batching传入请求，支持很多Hugging Face模型，如LLaMA & LLaMA-2、Qwen、Baichuan & Baichuan2等。
+vLLM是一个快速且易于使用的LLM推理和服务库，使用PageAttention高效管理kv内存，Continuous batching传入请求，支持很多Hugging Face模型，如LLaMA & LLaMA-2、Qwen、Chatglm2 & Chatglm3等。
 
 ## 安装
 vLLM支持
@@ -31,7 +31,8 @@ git clone https://developer.hpccube.com/codes/aicomponent/vllm # 根据需要的
 ```
 1. 编译whl包并安装
 python setup.py bdist_wheel 
-pip install dist/vllm*
+cd dist
+pip install vllm*
 
 2. 源码编译安装
 python3 setup.py install 
@@ -41,7 +42,7 @@ python3 setup.py install
 + 若使用 pip install 下载安装过慢，可添加源：-i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 ## 验证
-- python -c "import vllm; print(vllm.\_\_version__)"，版本号与官方版本同步，查询该软件的版本号，例如0.2.7；
+- python -c "import vllm; print(vllm.\_\_version__)"，版本号与官方版本同步，查询该软件的版本号，例如0.3.3；
 
 ## Known Issue
 - 无
