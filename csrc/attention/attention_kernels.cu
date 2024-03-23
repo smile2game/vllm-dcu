@@ -734,8 +734,8 @@ void paged_attention_v1(
       CALL_V1_LAUNCHER_BLOCK_SIZE(float, float, false);
     } else if (query.dtype() == at::ScalarType::Half) {
       CALL_V1_LAUNCHER_BLOCK_SIZE(uint16_t, uint16_t, false);
-    // } else if (query.dtype() == at::ScalarType::BFloat16) {
-    //   CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, __nv_bfloat16, false);
+    } else if (query.dtype() == at::ScalarType::BFloat16) {
+      CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, __nv_bfloat16, false);
     } else {
       TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
     }
@@ -927,8 +927,8 @@ void paged_attention_v2(
       CALL_V2_LAUNCHER_BLOCK_SIZE(float, float, false);
     } else if (query.dtype() == at::ScalarType::Half) {
       CALL_V2_LAUNCHER_BLOCK_SIZE(uint16_t, uint16_t, false);
-    // } else if (query.dtype() == at::ScalarType::BFloat16) {
-    //   CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, __nv_bfloat16, false);
+    } else if (query.dtype() == at::ScalarType::BFloat16) {
+      CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, __nv_bfloat16, false);
     } else {
       TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
     }
