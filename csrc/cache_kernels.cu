@@ -254,14 +254,14 @@ void reshape_and_cache(
     } else if (key.dtype() == at::ScalarType::BFloat16) {
       CALL_RESHAPE_AND_CACHE(__nv_bfloat16, __nv_bfloat16, false);
     }
-  // } else if (kv_cache_dtype == "fp8_e5m2") {
-  //   if (key.dtype() == at::ScalarType::Float) {
-  //     CALL_RESHAPE_AND_CACHE(float, uint8_t, true);
-  //   } else if (key.dtype() == at::ScalarType::Half) {
-  //     CALL_RESHAPE_AND_CACHE(uint16_t, uint8_t, true);
-  //   } else if (key.dtype() == at::ScalarType::BFloat16) {
-  //     CALL_RESHAPE_AND_CACHE(__nv_bfloat16, uint8_t, true);
-  //   }
+  } else if (kv_cache_dtype == "fp8_e5m2") {
+    if (key.dtype() == at::ScalarType::Float) {
+      CALL_RESHAPE_AND_CACHE(float, uint8_t, true);
+    } else if (key.dtype() == at::ScalarType::Half) {
+      CALL_RESHAPE_AND_CACHE(uint16_t, uint8_t, true);
+    } else if (key.dtype() == at::ScalarType::BFloat16) {
+      CALL_RESHAPE_AND_CACHE(__nv_bfloat16, uint8_t, true);
+    }
   } else {
     TORCH_CHECK(false, "Unsupported data type of kv cache: ", kv_cache_dtype);
   }
@@ -314,7 +314,7 @@ void convert_fp8_e5m2(
     CALL_CONVERT_FP8_E5M2(float, uint8_t);
   } else if (dst_cache.dtype() == at::ScalarType::Half) {
     CALL_CONVERT_FP8_E5M2(uint16_t, uint8_t);
-  // } else if (dst_cache.dtype() == at::ScalarType::BFloat16) {
-  //   CALL_CONVERT_FP8_E5M2(__nv_bfloat16, uint8_t);
+  } else if (dst_cache.dtype() == at::ScalarType::BFloat16) {
+    CALL_CONVERT_FP8_E5M2(__nv_bfloat16, uint8_t);
   }
 }
