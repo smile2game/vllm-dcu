@@ -736,19 +736,16 @@ void paged_attention_v1(
       CALL_V1_LAUNCHER_BLOCK_SIZE(uint16_t, uint16_t, false);
     } else if (query.dtype() == at::ScalarType::BFloat16) {
       CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, __nv_bfloat16, false);
+  } else if (kv_cache_dtype == "fp8_e5m2") {
+    if (query.dtype() == at::ScalarType::Float) {
+      CALL_V1_LAUNCHER_BLOCK_SIZE(float, uint8_t, true);
+    } else if (query.dtype() == at::ScalarType::Half) {
+      CALL_V1_LAUNCHER_BLOCK_SIZE(uint16_t, uint8_t, true);
+    } else if (query.dtype() == at::ScalarType::BFloat16) {
+      CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, uint8_t, true);
     } else {
       TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
     }
-  // } else if (kv_cache_dtype == "fp8_e5m2") {
-  //   if (query.dtype() == at::ScalarType::Float) {
-  //     CALL_V1_LAUNCHER_BLOCK_SIZE(float, uint8_t, true);
-  //   } else if (query.dtype() == at::ScalarType::Half) {
-  //     CALL_V1_LAUNCHER_BLOCK_SIZE(uint16_t, uint8_t, true);
-  //   } else if (query.dtype() == at::ScalarType::BFloat16) {
-  //     CALL_V1_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, uint8_t, true);
-  //   } else {
-  //     TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
-  //   }
   } else {
     TORCH_CHECK(false, "Unsupported data type of kv cache: ", kv_cache_dtype);
   }
@@ -929,19 +926,16 @@ void paged_attention_v2(
       CALL_V2_LAUNCHER_BLOCK_SIZE(uint16_t, uint16_t, false);
     } else if (query.dtype() == at::ScalarType::BFloat16) {
       CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, __nv_bfloat16, false);
+  } else if (kv_cache_dtype == "fp8_e5m2") {
+    if (query.dtype() == at::ScalarType::Float) {
+      CALL_V2_LAUNCHER_BLOCK_SIZE(float, uint8_t, true);
+    } else if (query.dtype() == at::ScalarType::Half) {
+      CALL_V2_LAUNCHER_BLOCK_SIZE(uint16_t, uint8_t, true);
+    } else if (query.dtype() == at::ScalarType::BFloat16) {
+      CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, uint8_t, true);
     } else {
       TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
     }
-  // } else if (kv_cache_dtype == "fp8_e5m2") {
-  //   if (query.dtype() == at::ScalarType::Float) {
-  //     CALL_V2_LAUNCHER_BLOCK_SIZE(float, uint8_t, true);
-  //   } else if (query.dtype() == at::ScalarType::Half) {
-  //     CALL_V2_LAUNCHER_BLOCK_SIZE(uint16_t, uint8_t, true);
-  //   } else if (query.dtype() == at::ScalarType::BFloat16) {
-  //     CALL_V2_LAUNCHER_BLOCK_SIZE(__nv_bfloat16, uint8_t, true);
-  //   } else {
-  //     TORCH_CHECK(false, "Unsupported data type: ", query.dtype());
-  //   }
   } else {
     TORCH_CHECK(false, "Unsupported data type of kv cache: ", kv_cache_dtype);
   }
