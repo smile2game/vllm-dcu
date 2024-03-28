@@ -14,9 +14,9 @@ vLLM支持
 #### 编译环境准备
 提供2种环境准备方式：
 
-1. 基于光源pytorch2.1.0基础镜像环境：镜像下载地址：[https://sourcefind.cn/#/image/dcu/pytorch](https://sourcefind.cn/#/image/dcu/pytorch)，根据pytorch、python、dtk及系统下载对应的镜像版本。
+1. 基于光源pytorch2.1.0基础镜像环境：镜像下载地址：[https://sourcefind.cn/#/image/dcu/pytorch](https://sourcefind.cn/#/image/dcu/pytorch)，根据pytorch2.1.0、python、dtk及系统下载对应的镜像版本。
 
-2. 基于现有python环境：安装pytorch2.1.0，pytorch whl包下载目录：[https://cancon.hpccube.com:65024/4/main/pytorch/dtk24.04](https://cancon.hpccube.com:65024/4/main/pytorch/dtk24.04)，根据python、dtk版本,下载对应pytorch的whl包。安装命令如下：
+2. 基于现有python环境：安装pytorch2.1.0，pytorch whl包下载目录：[https://cancon.hpccube.com:65024/4/main/pytorch/dtk24.04](https://cancon.hpccube.com:65024/4/main/pytorch/dtk24.04)，根据python、dtk版本,下载对应pytorch2.1.0的whl包。安装命令如下：
 ```shell
 pip install torch* (下载的torch的whl包)
 pip install setuptools wheel
