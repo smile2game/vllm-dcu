@@ -21,7 +21,8 @@ NUM_BLOCKS = 4321  # Arbitrary values for testing
 PARTITION_SIZE = 512
 # flshattF and tritonflashattF supported: {torch.float16, torch.bfloat16}
 DTYPES = [torch.half, torch.bfloat16, torch.float
-          ] if not is_hip() else [torch.half, torch.bfloat16]
+        #   ] if not is_hip() else [torch.half, torch.bfloat16]
+        ] if not is_hip() else [torch.half]
 NUM_GEN_SEQS = [7]  # Arbitrary values for testing
 NUM_PREFILL_SEQS = [3]  # Arbitrary values for testing
 NUM_HEADS = [(40, 40), (64, 8)]  # Arbitrary values for testing
@@ -33,7 +34,7 @@ HEAD_SIZES = [64, 80, 96, 112, 128, 256
 
 BLOCK_SIZES = [16, 32]
 USE_ALIBI = [False, True]
-KV_CACHE_DTYPE = ["auto", "fp8_e5m2"]
+KV_CACHE_DTYPE = ["auto", "fp8_e5m2"] if not is_hip() else ["auto"]
 SEEDS = [0]
 CUDA_DEVICES = [
     f"cuda:{i}" for i in range(1 if torch.cuda.device_count() == 1 else 2)

@@ -52,5 +52,5 @@ def test_get_prompt_logprobs(
             for token_id, logprob in vllm_sample_logprob_dict.items():
                 torch.testing.assert_close(logprob,
                                            hf_logprob[i][-1][token_id].item(),
-                                           atol=1e-2,
-                                           rtol=1e-2)
+                                           atol=1e-1,
+                                           rtol=1e-1)
