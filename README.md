@@ -42,7 +42,7 @@ python3 setup.py install
 + 若使用 pip install 下载安装过慢，可添加源：-i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 ## 验证
-- python -c "import vllm; print(vllm.\_\_version__)"，版本号与官方版本同步，查询该软件的版本号，例如0.3.3；
+- python -c "import vllm; print(vllm.\_\_version__)"，版本号与官方版本同步，查询该软件的版本号，例如0.4.0；
 
 ## Known Issue
 - 无
