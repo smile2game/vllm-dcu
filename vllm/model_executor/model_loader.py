@@ -10,6 +10,7 @@ from vllm.model_executor.models import ModelRegistry
 from vllm.model_executor.models.llava import LlavaForConditionalGeneration
 from vllm.model_executor.weight_utils import (get_quant_config,
                                               initialize_dummy_weights)
+import os
 
 _VISION_MODEL_CLASSES = [
     LlavaForConditionalGeneration,
@@ -28,6 +29,8 @@ def _set_default_torch_dtype(dtype: torch.dtype):
 def _get_model_architecture(
         model_config: ModelConfig) -> Tuple[Type[nn.Module], str]:
     architectures = getattr(model_config.hf_config, "architectures", [])
+    if architectures == ['LlamaForCausalLM']:
+        os.environ['LLAMA_NN'] = '1'
     # Special handling for quantized Mixtral.
     # FIXME(woosuk): This is a temporary hack.
     if (model_config.quantization is not None

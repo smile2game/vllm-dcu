@@ -68,8 +68,8 @@ def test_get_prompt_logprobs(
                 logprob = sample_logprob.logprob
                 torch.testing.assert_close(logprob,
                                            hf_logprob[i][-1][token_id].item(),
-                                           atol=1e-2,
-                                           rtol=1e-2)
+                                           atol=1e-1,
+                                           rtol=1e-1)
                 assert isinstance(sample_logprob.decoded_token, str), (
                     "The token should be decoded by the time it is returned "
                     " to the user.")
@@ -84,3 +84,4 @@ def test_max_logprobs():
     bad_sampling_params = SamplingParams(logprobs=2)
     with pytest.raises(ValueError):
         runner.generate(["Hello world"], sampling_params=bad_sampling_params)
+

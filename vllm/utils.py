@@ -171,7 +171,7 @@ def make_async(func: Callable[..., T]) -> Callable[..., Awaitable[T]]:
 
     return _async_wrapper
 
-
+    
 def get_ip() -> str:
     host_ip = os.environ.get("HOST_IP")
     if host_ip:
