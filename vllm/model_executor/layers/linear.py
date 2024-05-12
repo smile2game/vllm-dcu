@@ -486,7 +486,7 @@ class QKVParallelLinear(ColumnParallelLinear):
             else:
                 param_data = param_data.narrow(output_dim, shard_offset,
                                            shard_size)
-            if loaded_shard_id == "q" and len(param_data.shape) == 2:
+            if loaded_shard_id == "q":
                 shard_id = tp_rank
             else:
                 shard_id = tp_rank // self.num_kv_head_replicas
@@ -504,7 +504,7 @@ class QKVParallelLinear(ColumnParallelLinear):
         if self.use_llama_nn:
             assert param_data_.shape == loaded_weight.shape
             param_data_.copy_(loaded_weight)
-            if loaded_shard_id == "v":
+            if loaded_shard_id == "v" and len(param_data.shape) == 2:
                 param_data = param_data.transpose(0, 1) 
                 param.data = param_data.reshape(param_data.shape[1], -1) 
         else:
