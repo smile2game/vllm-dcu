@@ -117,9 +117,6 @@ class cmake_build_ext(build_ext):
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}'.format(outdir),
             '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY={}'.format(self.build_temp),
         ]
-        
-        if _is_hip:
-            cmake_args += ['--gpu-max-threads-per-block=1024']
 
         verbose = bool(int(os.getenv('VERBOSE', '0')))
         if verbose:

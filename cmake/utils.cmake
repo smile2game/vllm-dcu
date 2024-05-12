@@ -114,7 +114,8 @@ function (get_torch_gpu_compiler_flags OUT_GPU_FLAGS GPU_LANG)
       "-DUSE_ROCM"
       "-U__HIP_NO_HALF_CONVERSIONS__"
       "-U__HIP_NO_HALF_OPERATORS__"
-      "-fno-gpu-rdc")
+      "-fno-gpu-rdc"
+      "--gpu-max-threads-per-block=1024")
 
   endif()
   set(${OUT_GPU_FLAGS} ${GPU_FLAGS} PARENT_SCOPE)

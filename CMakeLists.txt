@@ -16,7 +16,7 @@ set(PYTHON_SUPPORTED_VERSIONS "3.8" "3.9" "3.10" "3.11")
 set(CUDA_SUPPORTED_ARCHS "7.0;7.5;8.0;8.6;8.9;9.0")
 
 # Supported AMD GPU architectures.
-set(HIP_SUPPORTED_ARCHS "gfx908;gfx90a;gfx942;gfx926;gfx928;gfx1100")
+set(HIP_SUPPORTED_ARCHS "gfx908;gfx90a;gfx942;gfx1100;gfx906;gfx926;gfx928")
 
 #
 # Supported/expected torch versions for CUDA/ROCm.
