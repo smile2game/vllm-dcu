@@ -76,6 +76,9 @@ def get_model(model_config: ModelConfig, device_config: DeviceConfig,
                 f"{supported_dtypes}")
         linear_method = quant_config.get_linear_method()
 
+    if linear_method != None:
+        os.environ['LLAMA_NN'] = '0'
+        
     with _set_default_torch_dtype(model_config.dtype):
         # Create a model instance.
         # The weights will be initialized as empty tensors.
