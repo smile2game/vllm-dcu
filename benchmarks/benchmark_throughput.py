@@ -224,8 +224,15 @@ def main(args: argparse.Namespace):
         raise ValueError(f"Unknown backend: {args.backend}")
     total_num_tokens = sum(prompt_len + output_len
                            for _, prompt_len, output_len in requests)
-    print(f"Throughput: {len(requests) / elapsed_time:.2f} requests/s, "
+    if args.dataset is None:
+        total_out_tokens = args.output_len * args.num_prompts
+    else:
+        total_out_tokens = sum(output_len for _, _, output_len in requests) 
+    print(f"Latency: {elapsed_time:.2f} s")
+    print(f"All Throughput: {len(requests) / elapsed_time:.2f} requests/s, "
           f"{total_num_tokens / elapsed_time:.2f} tokens/s")
+    print(f"Generate Throughput: {total_out_tokens / elapsed_time:.2f} tokens/s")
+
 
 
 if __name__ == "__main__":
