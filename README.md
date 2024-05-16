@@ -63,10 +63,11 @@ python3 setup.py install
 
 #### 运行基础环境准备
 1、使用基于光源pytorch2.1.0基础镜像环境：docker pull image.sourcefind.cn:5000/dcu/admin/base/pytorch:2.1.0-centos7.6-dtk24.04-py310 
+
 2、安装对应依赖的包：
-triton:[https://cancon.hpccube.com:65024/4/main/triton/DAS1.0](https://cancon.hpccube.com:65024/4/main/triton/DAS1.0)
-xformers:[https://cancon.hpccube.com:65024/4/main/xformers/DAS1.0](https://cancon.hpccube.com:65024/4/main/xformers/DAS1.0)
-flash_attn: [https://cancon.hpccube.com:65024/4/main/flash_attn/DAS1.0](https://cancon.hpccube.com:65024/4/main/flash_attn/DAS1.0)
+- triton:[https://cancon.hpccube.com:65024/4/main/triton/DAS1.0](https://cancon.hpccube.com:65024/4/main/triton/DAS1.0)
+- xformers:[https://cancon.hpccube.com:65024/4/main/xformers/DAS1.0](https://cancon.hpccube.com:65024/4/main/xformers/DAS1.0)
+- flash_attn: [https://cancon.hpccube.com:65024/4/main/flash_attn/DAS1.0](https://cancon.hpccube.com:65024/4/main/flash_attn/DAS1.0)
 
 
 #### 注意事项
