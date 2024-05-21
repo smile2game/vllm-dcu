@@ -16,13 +16,12 @@ from dataclasses import dataclass
 import pytest
 import torch
 
-from vllm.model_executor.layers.quantization import (
-    _QUANTIZATION_CONFIG_REGISTRY)
+from vllm.model_executor.layers.quantization import QUANTIZATION_METHODS
 
 capability = torch.cuda.get_device_capability()
 capability = capability[0] * 10 + capability[1]
-marlin_not_supported = (
-    capability < _QUANTIZATION_CONFIG_REGISTRY["marlin"].get_min_capability())
+marlin_not_supported = (capability <
+                        QUANTIZATION_METHODS["marlin"].get_min_capability())
 
 
 @dataclass
@@ -47,7 +46,7 @@ model_pairs = [
 @pytest.mark.parametrize("model_pair", model_pairs)
 @pytest.mark.parametrize("dtype", ["half"])
 @pytest.mark.parametrize("max_tokens", [32])
-@pytest.mark.parametrize("num_logprobs", [3])
+@pytest.mark.parametrize("num_logprobs", [5])
 def test_models(
     vllm_runner,
     example_prompts,

@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 project(vllm_extensions LANGUAGES CXX)
 
+option(VLLM_TARGET_DEVICE "Target device backend for vLLM" "cuda")
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Target device: ${VLLM_TARGET_DEVICE}")
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake)
 
@@ -16,7 +19,7 @@ set(PYTHON_SUPPORTED_VERSIONS "3.8" "3.9" "3.10" "3.11")
 set(CUDA_SUPPORTED_ARCHS "7.0;7.5;8.0;8.6;8.9;9.0")
 
 # Supported AMD GPU architectures.
-set(HIP_SUPPORTED_ARCHS "gfx908;gfx90a;gfx942;gfx1100;gfx906;gfx926;gfx928")
+set(HIP_SUPPORTED_ARCHS "gfx906;gfx908;gfx90a;gfx940;gfx941;gfx942;gfx1030;gfx1100;gfx926;gfx928")
 
 #
 # Supported/expected torch versions for CUDA/ROCm.
@@ -28,7 +31,7 @@ set(HIP_SUPPORTED_ARCHS "gfx908;gfx90a;gfx942;gfx1100;gfx906;gfx926;gfx928")
 # requirements.txt files and should be kept consistent.  The ROCm torch
 # versions are derived from Dockerfile.rocm
 #
-set(TORCH_SUPPORTED_VERSION_CUDA "2.1.2")
+set(TORCH_SUPPORTED_VERSION_CUDA "2.2.1")
 set(TORCH_SUPPORTED_VERSION_ROCM_5X "2.0.1")
 set(TORCH_SUPPORTED_VERSION_ROCM_6X "2.1.1")
 
@@ -75,6 +78,19 @@ find_package(Torch REQUIRED)
 #
 find_library(torch_python_LIBRARY torch_python PATHS
   "${TORCH_INSTALL_PREFIX}/lib")
+
+#
+# Forward the non-CUDA device extensions to external CMake scripts.
+#
+if (NOT VLLM_TARGET_DEVICE STREQUAL "cuda" AND
+    NOT VLLM_TARGET_DEVICE STREQUAL "rocm")
+    if (VLLM_TARGET_DEVICE STREQUAL "cpu")
+        include(${CMAKE_CURRENT_LIST_DIR}/cmake/cpu_extension.cmake)
+    else()
+        message(FATAL_ERROR "Unsupported vLLM target device: ${VLLM_TARGET_DEVICE}")
+    endif()
+    return()
+endif()
 
 #
 # Set up GPU language and check the torch version and warn if it isn't
@@ -151,12 +167,14 @@ set(VLLM_EXT_SRC
   "csrc/layernorm_kernels.cu"
   "csrc/quantization/squeezellm/quant_cuda_kernel.cu"
   "csrc/quantization/gptq/q_gemm.cu"
+  "csrc/quantization/fp8/fp8_cuda_kernels.cu"
   "csrc/cuda_utils_kernels.cu"
   "csrc/moe_align_block_size_kernels.cu"
   "csrc/pybind.cpp")
 
 if(VLLM_GPU_LANG STREQUAL "CUDA")
   list(APPEND VLLM_EXT_SRC
+    "csrc/quantization/aqlm/gemm_kernels.cu"
     "csrc/quantization/awq/gemm_kernels.cu"
     "csrc/quantization/marlin/marlin_cuda_kernel.cu"
     "csrc/custom_all_reduce.cu")
@@ -194,23 +212,11 @@ define_gpu_extension_target(
 
 set(VLLM_PUNICA_EXT_SRC
   "csrc/punica/bgmv/bgmv_bf16_bf16_bf16.cu"
-  "csrc/punica/bgmv/bgmv_bf16_bf16_fp16.cu"
-  "csrc/punica/bgmv/bgmv_bf16_fp16_bf16.cu"
-  "csrc/punica/bgmv/bgmv_bf16_fp16_fp16.cu"
   "csrc/punica/bgmv/bgmv_bf16_fp32_bf16.cu"
-  "csrc/punica/bgmv/bgmv_bf16_fp32_fp16.cu"
-  "csrc/punica/bgmv/bgmv_fp16_bf16_bf16.cu"
-  "csrc/punica/bgmv/bgmv_fp16_bf16_fp16.cu"
-  "csrc/punica/bgmv/bgmv_fp16_fp16_bf16.cu"
   "csrc/punica/bgmv/bgmv_fp16_fp16_fp16.cu"
-  "csrc/punica/bgmv/bgmv_fp16_fp32_bf16.cu"
   "csrc/punica/bgmv/bgmv_fp16_fp32_fp16.cu"
   "csrc/punica/bgmv/bgmv_fp32_bf16_bf16.cu"
-  "csrc/punica/bgmv/bgmv_fp32_bf16_fp16.cu"
-  "csrc/punica/bgmv/bgmv_fp32_fp16_bf16.cu"
   "csrc/punica/bgmv/bgmv_fp32_fp16_fp16.cu"
-  "csrc/punica/bgmv/bgmv_fp32_fp32_bf16.cu"
-  "csrc/punica/bgmv/bgmv_fp32_fp32_fp16.cu"
   "csrc/punica/punica_ops.cc")
 
 #
