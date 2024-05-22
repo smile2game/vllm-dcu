@@ -356,9 +356,9 @@ def get_vllm_version() -> str:
             version += f"+cu{cuda_version_str}"
     elif _is_hip():
         # Get the HIP version
-        hipcc_version = get_hipcc_rocm_version()
-        if hipcc_version != MAIN_CUDA_VERSION:
-            rocm_version_str = hipcc_version.replace(".", "")[:3]
+        # hipcc_version = get_hipcc_rocm_version()
+        # if hipcc_version != MAIN_CUDA_VERSION:
+        #     rocm_version_str = hipcc_version.replace(".", "")[:3]
         #     version += f"+rocm{rocm_version_str}"
         version = get_version()
     elif _is_neuron():
