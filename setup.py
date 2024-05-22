@@ -315,7 +315,7 @@ def get_version_add(sha: Optional[str] = None) -> str:
     if sha != 'Unknown':
         if sha is None:
             sha = get_sha(vllm_root)
-        version = 'git' + sha[:7]
+        version = 'das1.1' + sha[:7]
 
     # abi version
     version += "." + get_abi()
@@ -330,7 +330,7 @@ def get_version_add(sha: Optional[str] = None) -> str:
         version += ".dtk" + rocm_version
 
     # torch version
-    version += ".torch" + torch.__version__[:3]
+    version += ".torch" + torch.__version__[:5]
 
     with open(add_version_path, encoding="utf-8",mode="w") as file:
         file.write("__version__='0.4.0'\n")
