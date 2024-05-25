@@ -346,13 +346,8 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
         self.output_sizes = output_sizes
         tp_size = get_tensor_model_parallel_world_size()
         assert all(output_size % tp_size == 0 for output_size in output_sizes)
-<<<<<<< HEAD
-        super().__init__(input_size, sum(output_sizes), bias, gather_output,     
-                         skip_bias_add, params_dtype, linear_method,
-=======
         super().__init__(input_size, sum(output_sizes), bias, gather_output,
                          skip_bias_add, params_dtype, quant_config,
->>>>>>> v0.4.2
                          self.output_sizes)
         self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
@@ -514,12 +509,8 @@ class QKVParallelLinear(ColumnParallelLinear):
         ]
 
         super().__init__(input_size, output_size, bias, False, skip_bias_add,
-<<<<<<< HEAD
-                         params_dtype, linear_method, output_sizes)
-        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
-=======
                          params_dtype, quant_config, output_sizes)
->>>>>>> v0.4.2
+        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def weight_loader(self,
                       param: Parameter,

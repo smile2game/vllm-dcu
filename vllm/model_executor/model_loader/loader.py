@@ -54,18 +54,12 @@ def _get_quantization_config(
                 f"{model_config.dtype} is not supported for quantization "
                 f"method {model_config.quantization}. Supported dtypes: "
                 f"{supported_dtypes}")
-<<<<<<< HEAD
-
-        linear_method = quant_config.get_linear_method()
-        
-    if linear_method != None:
+        return quant_config
+    
+    if quant_config != None:
         os.environ['LLAMA_NN'] = '0'
         
-    return linear_method
-=======
-        return quant_config
     return None
->>>>>>> v0.4.2
 
 
 def _get_model_initialization_kwargs(

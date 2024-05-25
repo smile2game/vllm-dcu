@@ -25,11 +25,7 @@ SEEDS = [0]
 CUDA_DEVICES = [
     f"cuda:{i}" for i in range(1 if torch.cuda.device_count() == 1 else 2)
 ]
-<<<<<<< HEAD
-KV_CACHE_DTYPE = ["auto", "fp8_e5m2"]  if not is_hip() else ["auto"]
-=======
-KV_CACHE_DTYPE = ["auto", "fp8"]
->>>>>>> v0.4.1
+KV_CACHE_DTYPE = ["auto", "fp8"] if not is_hip() else ["auto"]
 
 
 @pytest.mark.parametrize("num_mappings", NUM_MAPPINGS)
