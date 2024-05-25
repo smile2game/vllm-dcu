@@ -329,7 +329,7 @@ def get_version_add(sha: Optional[str] = None) -> str:
     if sha != 'Unknown':
         if sha is None:
             sha = get_sha(vllm_root)
-        version = 'das1.1' + sha[:7]
+        version = 'das1.1.git' + sha[:7]
 
     # abi version
     version += "." + get_abi()
