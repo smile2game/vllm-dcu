@@ -54,10 +54,9 @@ def _get_quantization_config(
                 f"{model_config.dtype} is not supported for quantization "
                 f"method {model_config.quantization}. Supported dtypes: "
                 f"{supported_dtypes}")
+        if quant_config != None:
+            os.environ['LLAMA_NN'] = '0'
         return quant_config
-    
-    if quant_config != None:
-        os.environ['LLAMA_NN'] = '0'
         
     return None
 

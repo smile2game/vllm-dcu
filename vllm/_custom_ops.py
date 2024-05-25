@@ -186,17 +186,17 @@ def gptq_marlin_gemm(a: torch.Tensor, b_q_weight: torch.Tensor,
 
 
 # fp8
-def scaled_fp8_quant(
-    input: torch.Tensor,
-    scale: Optional[torch.Tensor] = None,
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    output = torch.empty_like(input, dtype=torch.float8_e4m3fn)
-    if scale is None:
-        scale = torch.zeros(1, device=input.device, dtype=torch.float32)
-        vllm_ops.dynamic_scaled_fp8_quant(output, input, scale)
-    else:
-        vllm_ops.static_scaled_fp8_quant(output, input, scale)
-    return output, scale
+# def scaled_fp8_quant(
+#     input: torch.Tensor,
+#     scale: Optional[torch.Tensor] = None,
+# ) -> Tuple[torch.Tensor, torch.Tensor]:
+#     output = torch.empty_like(input, dtype=torch.float8_e4m3fn)
+#     if scale is None:
+#         scale = torch.zeros(1, device=input.device, dtype=torch.float32)
+#         vllm_ops.dynamic_scaled_fp8_quant(output, input, scale)
+#     else:
+#         vllm_ops.static_scaled_fp8_quant(output, input, scale)
+#     return output, scale
 
 
 # moe
