@@ -264,21 +264,21 @@ def gptq_marlin_gemm(a: torch.Tensor, b_q_weight: torch.Tensor,
 
 
 # int8
-# def static_scaled_int8_quant(input: torch.Tensor,
-#                              scale: float) -> torch.Tensor:
-#     """
-#     Quantize the input tensor to int8 and return the quantized tensor.
+def static_scaled_int8_quant(input: torch.Tensor,
+                             scale: float) -> torch.Tensor:
+    """
+    Quantize the input tensor to int8 and return the quantized tensor.
 
-#     Args:
-#         input: The input tensor to be quantized to int8.
-#         scale: Scaling factor for the int8 quantization.
+    Args:
+        input: The input tensor to be quantized to int8.
+        scale: Scaling factor for the int8 quantization.
 
-#     Returns:
-#         torch.Tensor: Output tensor in int8.
-#     """
-#     q = torch.empty_like(input, dtype=torch.int8)
-#     vllm_ops.static_scaled_int8_quant(q, input, scale)
-#     return q
+    Returns:
+        torch.Tensor: Output tensor in int8.
+    """
+    q = torch.empty_like(input, dtype=torch.int8)
+    vllm_ops.static_scaled_int8_quant(q, input, scale)
+    return q
 
 
 # moe
