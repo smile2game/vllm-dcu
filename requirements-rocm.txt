@@ -3,3 +3,5 @@
 
 # Dependencies for AMD GPUs
 ray == 2.9.1
+# ray >= 2.10.0
+pytest-asyncio
