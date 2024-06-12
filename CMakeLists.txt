@@ -8,7 +8,6 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Target device: ${VLLM_TARGET_DEVICE}")
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake)
-include_directories(/opt/rh/devtoolset-7/root/usr/include/c++/7)
 
 #
 # Supported python versions.  These versions will be searched in order, the

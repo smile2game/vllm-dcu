@@ -157,15 +157,15 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
   ops.impl("squeezellm_gemm", torch::kCUDA, &squeezellm_gemm);
 
   // Compute FP8 quantized tensor for given scaling factor.
-  ops.def(
-      "static_scaled_fp8_quant(Tensor! out, Tensor input, Tensor scale) -> ()");
-  ops.impl("static_scaled_fp8_quant", torch::kCUDA, &static_scaled_fp8_quant);
+//   ops.def(
+//       "static_scaled_fp8_quant(Tensor! out, Tensor input, Tensor scale) -> ()");
+//   ops.impl("static_scaled_fp8_quant", torch::kCUDA, &static_scaled_fp8_quant);
 
   // Compute FP8 quantized tensor and scaling factor.
-  ops.def(
-      "dynamic_scaled_fp8_quant(Tensor! out, Tensor input, Tensor! scale) -> "
-      "()");
-  ops.impl("dynamic_scaled_fp8_quant", torch::kCUDA, &dynamic_scaled_fp8_quant);
+//   ops.def(
+//       "dynamic_scaled_fp8_quant(Tensor! out, Tensor input, Tensor! scale) -> "
+//       "()");
+//   ops.impl("dynamic_scaled_fp8_quant", torch::kCUDA, &dynamic_scaled_fp8_quant);
 
   // Aligning the number of tokens to be processed by each expert such
   // that it is divisible by the block size.
