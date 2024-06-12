@@ -13,7 +13,7 @@ from vllm.pooling_params import PoolingParams
 from vllm.sampling_params import SamplingParams
 from vllm.version import __dcu_version__
 
-__version__ = "0.4.3"
+__version__ = "0.5.0"
 
 __all__ = [
     "LLM",

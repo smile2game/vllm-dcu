@@ -64,7 +64,7 @@ def remove_prefix(text, prefix):
 class CMakeExtension(Extension):
 
     def __init__(self, name: str, cmake_lists_dir: str = '.', **kwa) -> None:
-        super().__init__(name, sources=[], **kwa)
+        super().__init__(name, sources=[], py_limited_api=True, **kwa)
         self.cmake_lists_dir = os.path.abspath(cmake_lists_dir)
 
 
@@ -191,20 +191,23 @@ class cmake_build_ext(build_ext):
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
 
+        targets = []
         # Build all the extensions
         for ext in self.extensions:
             self.configure(ext)
+            targets.append(remove_prefix(ext.name, "vllm."))
 
-            ext_target_name = remove_prefix(ext.name, "vllm.")
-            num_jobs, _ = self.compute_num_jobs()
+        num_jobs, _ = self.compute_num_jobs()
 
-            build_args = [
-                '--build', '.', '--target', ext_target_name, '-j',
-                str(num_jobs)
-            ]
+        build_args = [
+            "--build",
+            ".",
+            f"-j={num_jobs}",
+            *[f"--target={name}" for name in targets],
+        ]
 
-            subprocess.check_call(['cmake', *build_args], cwd=self.build_temp)
-            
+        subprocess.check_call(["cmake", *build_args], cwd=self.build_temp)
+
 
 def _is_cuda() -> bool:
     return VLLM_TARGET_DEVICE == "cuda" \
@@ -223,7 +226,7 @@ def _is_neuron() -> bool:
         subprocess.run(["neuron-ls"], capture_output=True, check=True)
     except (FileNotFoundError, PermissionError, subprocess.CalledProcessError):
         torch_neuronx_installed = False
-    return torch_neuronx_installed or envs.VLLM_BUILD_WITH_NEURON
+    return torch_neuronx_installed or VLLM_TARGET_DEVICE == "neuron"
 
 
 def _is_cpu() -> bool:
@@ -347,8 +350,8 @@ def get_version_add(sha: Optional[str] = None) -> str:
     version += ".torch" + torch.__version__[:5]
 
     with open(add_version_path, encoding="utf-8",mode="w") as file:
-        file.write("__version__='0.4.3'\n")
-        file.write("__dcu_version__='0.4.3+{}'\n".format(version))
+        file.write("__version__='0.5.0'\n")
+        file.write("__dcu_version__='0.5.0+{}'\n".format(version))
     file.close()
     
     
@@ -438,7 +441,7 @@ def get_requirements() -> List[str]:
 
 ext_modules = []
 
-if _is_cuda():
+if _is_cuda() or _is_hip():
     ext_modules.append(CMakeExtension(name="vllm._moe_C"))
 
 if not _is_neuron():
