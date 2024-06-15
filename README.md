@@ -53,12 +53,12 @@ git clone http://developer.hpccube.com/codes/OpenDAS/vllm.git # 根据需要的�
 - 提供2种源码编译方式（进入vllm目录）：
 ```
 1. 编译whl包并安装
-python setup.py bdist_wheel 
+VLLM_INSTALL_PUNICA_KERNELS=1 python setup.py bdist_wheel 
 cd dist
 pip install vllm*
 
 2. 源码编译安装
-python3 setup.py install 
+VLLM_INSTALL_PUNICA_KERNELS=1 python3 setup.py install 
 ```
 
 #### 运行基础环境准备

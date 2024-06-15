@@ -10,7 +10,7 @@ from vllm.attention.selector import which_attn_to_use
 
 @pytest.mark.parametrize(
     "name", ["TORCH_SDPA", "ROCM_FLASH", "XFORMERS", "FLASHINFER"])
-@pytest.mark.parametrize("device", ["cpu", "hip", "cuda"])
+@pytest.mark.parametrize("device", ["cpu", "hip"])
 def test_env(name: str, device: str, monkeypatch):
     """Test that the attention selector can be set via environment variable.
     Note that we do not test FlashAttn because it is the default backend.

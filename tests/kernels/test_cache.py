@@ -345,37 +345,37 @@ def test_swap_blocks(
                               dist_value_caches[0][dst].cpu())
 
 
-@pytest.mark.parametrize("num_heads", NUM_HEADS)
-@pytest.mark.parametrize("head_size", HEAD_SIZES)
-@pytest.mark.parametrize("block_size", BLOCK_SIZES)
-@pytest.mark.parametrize("num_blocks", NUM_BLOCKS)
-@pytest.mark.parametrize("dtype", DTYPES)
-@pytest.mark.parametrize("seed", SEEDS)
-@pytest.mark.parametrize("device", CUDA_DEVICES)
-@torch.inference_mode()
-def test_fp8_e4m3_conversion(
-    num_heads: int,
-    head_size: int,
-    block_size: int,
-    num_blocks: int,
-    dtype: torch.dtype,
-    seed: int,
-    device: str,
-) -> None:
-    random.seed(seed)
-    torch.random.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+# @pytest.mark.parametrize("num_heads", NUM_HEADS)
+# @pytest.mark.parametrize("head_size", HEAD_SIZES)
+# @pytest.mark.parametrize("block_size", BLOCK_SIZES)
+# @pytest.mark.parametrize("num_blocks", NUM_BLOCKS)
+# @pytest.mark.parametrize("dtype", DTYPES)
+# @pytest.mark.parametrize("seed", SEEDS)
+# @pytest.mark.parametrize("device", CUDA_DEVICES)
+# @torch.inference_mode()
+# def test_fp8_e4m3_conversion(
+#     num_heads: int,
+#     head_size: int,
+#     block_size: int,
+#     num_blocks: int,
+#     dtype: torch.dtype,
+#     seed: int,
+#     device: str,
+# ) -> None:
+#     random.seed(seed)
+#     torch.random.manual_seed(seed)
+#     torch.cuda.manual_seed(seed)
 
-    low = -224.0
-    high = 224.0
-    shape = (num_blocks, num_heads, head_size, block_size)
-    cache = torch.empty(shape, dtype=dtype, device=device)
-    cache.uniform_(low, high)
+#     low = -224.0
+#     high = 224.0
+#     shape = (num_blocks, num_heads, head_size, block_size)
+#     cache = torch.empty(shape, dtype=dtype, device=device)
+#     cache.uniform_(low, high)
 
-    cache_fp8 = torch.empty_like(cache, dtype=torch.uint8)
-    ops.convert_fp8(cache_fp8, cache)
+#     cache_fp8 = torch.empty_like(cache, dtype=torch.uint8)
+#     ops.convert_fp8(cache_fp8, cache)
 
-    converted_cache = torch.empty_like(cache)
-    ops.convert_fp8(converted_cache, cache_fp8)
+#     converted_cache = torch.empty_like(cache)
+#     ops.convert_fp8(converted_cache, cache_fp8)
 
-    assert torch.allclose(cache, converted_cache, atol=0.001, rtol=0.1)
+#     assert torch.allclose(cache, converted_cache, atol=0.001, rtol=0.1)

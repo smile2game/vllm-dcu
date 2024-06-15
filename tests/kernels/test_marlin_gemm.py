@@ -19,6 +19,7 @@ from vllm.model_executor.layers.quantization.utils.marlin_utils import (
     marlin_quantize, marlin_weights)
 from vllm.model_executor.layers.quantization.utils.quant_utils import (
     gptq_pack, quantize_weights, sort_weights)
+from vllm.utils import is_hip
 
 ACT_ORDER_OPTS = [False, True]
 K_FULL_OPTS = [False, True]
@@ -43,7 +44,7 @@ def rand_data(shape):
     return torch.randn(shape, dtype=torch.half, device="cuda")
 
 
-@pytest.mark.skipif(not is_marlin_supported(),
+@pytest.mark.skipif(not is_marlin_supported() or is_hip(),
                     reason="Marlin is not supported on this GPU type.")
 @pytest.mark.parametrize("k_chunk", MARLIN_K_CHUNKS)
 @pytest.mark.parametrize("n_chunk", MARLIN_N_CHUNKS)
@@ -106,7 +107,7 @@ def test_marlin_repack(k_chunk, n_chunk, num_bits, group_size, act_order,
     assert torch.allclose(marlin_q_w_1, marlin_q_w_2)
 
 
-@pytest.mark.skipif(not is_marlin_supported(),
+@pytest.mark.skipif(not is_marlin_supported() or is_hip(),
                     reason="Marlin is not supported on this GPU type.")
 @pytest.mark.parametrize("k_chunk", MARLIN_K_CHUNKS)
 @pytest.mark.parametrize("n_chunk", MARLIN_N_CHUNKS)
@@ -171,7 +172,7 @@ def test_marlin_gemm(
     assert max_diff < 0.04
 
 
-@pytest.mark.skipif(not is_marlin_supported(),
+@pytest.mark.skipif(not is_marlin_supported() or is_hip(),
                     reason="Marlin is not supported on this GPU type.")
 @pytest.mark.parametrize("k_chunk", MARLIN_24_K_CHUNKS)
 @pytest.mark.parametrize("n_chunk", MARLIN_24_N_CHUNKS)
