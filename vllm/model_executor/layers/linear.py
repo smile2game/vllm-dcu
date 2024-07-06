@@ -607,6 +607,7 @@ class QKVParallelLinear(ColumnParallelLinear):
                          params_dtype=params_dtype,
                          quant_config=quant_config)
         self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
+        self.use_fa_pad = os.environ.get('FA_PAD') == '1'
 
     def weight_loader(self,
                       param: Parameter,
@@ -763,8 +764,12 @@ class QKVParallelLinear(ColumnParallelLinear):
             assert param_data_.shape == loaded_weight.shape
             param_data_.copy_(loaded_weight)
             if loaded_shard_id == "v" and len(param_data.shape) == 2:
+                if self.use_fa_pad and param_data.shape[0]== 12288:
+                    param_data = pad_weight(param.data, 32)
                 param_data = param_data.transpose(0, 1) 
                 param.data = param_data.reshape(param_data.shape[1], -1) 
+            if self.use_fa_pad and param_data.shape[0]== 12288 and loaded_shard_id == "v" and len(param_data.shape) == 1:
+                 param.data = pad_weight(param.data, 32)
         else:
             assert param_data.shape == loaded_weight.shape
             param_data.copy_(loaded_weight)

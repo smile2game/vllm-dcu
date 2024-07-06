@@ -7,6 +7,7 @@ from typing import Iterable, List, Optional, Tuple
 import torch
 from torch import nn
 from torch.nn import LayerNorm
+import os
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig, LoRAConfig
@@ -101,6 +102,8 @@ class GLMAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.query_key_value(hidden_states)
+        if os.environ.get('FA_PAD') == '1':
+            qkv = qkv[...,:-32]
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(position_ids, q, k)
         context_layer = self.attn(

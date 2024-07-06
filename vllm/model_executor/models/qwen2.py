@@ -27,6 +27,7 @@ from typing import Iterable, List, Optional, Tuple
 import torch
 from torch import nn
 from transformers import Qwen2Config
+import os
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig, LoRAConfig
@@ -148,6 +149,8 @@ class Qwen2Attention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
+        if os.environ.get('FA_PAD') == '1':
+            qkv = qkv[...,:-32]
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)

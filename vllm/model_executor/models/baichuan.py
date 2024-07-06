@@ -24,6 +24,7 @@ from typing import Iterable, List, Optional, Tuple
 import torch
 from torch import nn
 from transformers import PretrainedConfig
+import os
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig, LoRAConfig
@@ -178,6 +179,8 @@ class BaiChuanAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.W_pack(hidden_states)
+        if os.environ.get('FA_PAD') == '1':
+            qkv = qkv[...,:-32]
         q, k, v = qkv.chunk(chunks=3, dim=-1)
         if self.postion_embedding != "ALIBI":
             q, k = self.rotary_emb(positions, q, k)
