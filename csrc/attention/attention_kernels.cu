@@ -81,12 +81,39 @@ inline __device__ float block_sum(float* red_smem, float sum) {
   return VLLM_SHFL_SYNC(sum, 0);
 }
 
+// remove bf16 surport,because bf16 has bad performance on dcu.
+template <typename scalar_t, typename cache_t, int HEAD_SIZE, int BLOCK_SIZE,
+          int NUM_THREADS, vllm::Fp8KVCacheDataType KV_DTYPE,
+          bool IS_BLOCK_SPARSE,int PARTITION_SIZE = 0,bool big_seq=false,
+          std::enable_if_t<!std::is_same<scalar_t, uint16_t>::value, int> = 0>  // Zero means no partitioning.
+__device__ void paged_attention_kernel(
+    float* __restrict__ exp_sums,  // [num_seqs, num_heads, max_num_partitions]
+    float* __restrict__ max_logits,  // [num_seqs, num_heads,
+                                     // max_num_partitions]
+    scalar_t* __restrict__ out,  // [num_seqs, num_heads, max_num_partitions,
+                                 // head_size]
+    const scalar_t* __restrict__ q,       // [num_seqs, num_heads, head_size]
+    const cache_t* __restrict__ k_cache,  // [num_blocks, num_kv_heads,
+                                          // head_size/x, block_size, x]
+    const cache_t* __restrict__ v_cache,  // [num_blocks, num_kv_heads,
+                                          // head_size, block_size]
+    const int num_kv_heads,               // [num_heads]
+    const float scale,
+    const int* __restrict__ block_tables,  // [num_seqs, max_num_blocks_per_seq]
+    const int* __restrict__ seq_lens,      // [num_seqs]
+    const int max_num_blocks_per_seq,
+    const float* __restrict__ alibi_slopes,  // [num_heads]
+    const int q_stride, const int kv_block_stride, const int kv_head_stride,
+    const float kv_scale, const int tp_rank, const int blocksparse_local_blocks,
+    const int blocksparse_vert_stride, const int blocksparse_block_size,
+    const int blocksparse_head_sliding_step) {}
+
 // TODO(woosuk): Merge the last two dimensions of the grid.
 // Grid: (num_heads, num_seqs, max_num_partitions).
 template <typename scalar_t, typename cache_t, int HEAD_SIZE, int BLOCK_SIZE,
           int NUM_THREADS, vllm::Fp8KVCacheDataType KV_DTYPE,
-          bool IS_BLOCK_SPARSE,
-          int PARTITION_SIZE = 0>  // Zero means no partitioning.
+          bool IS_BLOCK_SPARSE,int PARTITION_SIZE = 0,bool big_seq=false,
+          std::enable_if_t<std::is_same<scalar_t, uint16_t>::value, int> = 0>  // Zero means no partitioning.
 __device__ void paged_attention_kernel(
     float* __restrict__ exp_sums,  // [num_seqs, num_heads, max_num_partitions]
     float* __restrict__ max_logits,  // [num_seqs, num_heads,
@@ -139,7 +166,7 @@ __device__ void paged_attention_kernel(
   constexpr int NUM_THREAD_GROUPS =
       NUM_THREADS / THREAD_GROUP_SIZE;  // Note: This assumes THREAD_GROUP_SIZE
                                         // divides NUM_THREADS
-  assert(NUM_THREADS % THREAD_GROUP_SIZE == 0);
+  static_assert(NUM_THREADS % THREAD_GROUP_SIZE == 0);
   constexpr int NUM_TOKENS_PER_THREAD_GROUP =
       DIVIDE_ROUND_UP(BLOCK_SIZE, WARP_SIZE);
   constexpr int NUM_WARPS = NUM_THREADS / WARP_SIZE;
@@ -428,7 +455,12 @@ __device__ void paged_attention_kernel(
             v_vec_ptr[j] = token_idx + j < seq_len ? v_vec_ptr[j] : zero_value;
           }
         }
-        accs[i] += dot(logits_vec, v_vec);
+        if constexpr(big_seq){
+           v_pk_fma_f16x8(accs[i],logits_vec,v_vec);
+        }
+        else{
+           accs[i] += dot(logits_vec, v_vec);
+        }
       }
     }
   }
@@ -530,7 +562,7 @@ __global__ void paged_attention_v1_kernel(
 template <typename scalar_t, typename cache_t, int HEAD_SIZE, int BLOCK_SIZE,
           int NUM_THREADS, vllm::Fp8KVCacheDataType KV_DTYPE,
           bool IS_BLOCK_SPARSE,
-          int PARTITION_SIZE>
+          int PARTITION_SIZE,bool big_seq=false>
 __global__ void paged_attention_v2_kernel(
     float* __restrict__ exp_sums,  // [num_seqs, num_heads, max_num_partitions]
     float* __restrict__ max_logits,       // [num_seqs, num_heads,
@@ -553,7 +585,7 @@ __global__ void paged_attention_v2_kernel(
     const int blocksparse_vert_stride, const int blocksparse_block_size,
     const int blocksparse_head_sliding_step) {
   paged_attention_kernel<scalar_t, cache_t, HEAD_SIZE, BLOCK_SIZE, NUM_THREADS,
-                         KV_DTYPE, IS_BLOCK_SPARSE, PARTITION_SIZE>(
+                         KV_DTYPE, IS_BLOCK_SPARSE, PARTITION_SIZE, big_seq>(
       exp_sums, max_logits, tmp_out, q, k_cache, v_cache, num_kv_heads, scale,
       block_tables, seq_lens, max_num_blocks_per_seq, alibi_slopes, q_stride,
       kv_block_stride, kv_head_stride, kv_scale, tp_rank,
@@ -689,7 +721,7 @@ __global__ void paged_attention_v2_reduce_kernel(
 // TODO(woosuk): Tune NUM_THREADS.
 template <typename T, typename CACHE_T, int BLOCK_SIZE,
           vllm::Fp8KVCacheDataType KV_DTYPE, bool IS_BLOCK_SPARSE,
-          int NUM_THREADS = 128>
+          int NUM_THREADS = 256>
 void paged_attention_v1_launcher(
     torch::Tensor& out, torch::Tensor& query, torch::Tensor& key_cache,
     torch::Tensor& value_cache, int num_kv_heads, float scale,
@@ -828,7 +860,7 @@ void paged_attention_v1(
 #define LAUNCH_PAGED_ATTENTION_V2(HEAD_SIZE)                                   \
   vllm::paged_attention_v2_kernel<T, CACHE_T, HEAD_SIZE, BLOCK_SIZE,           \
                                   NUM_THREADS, KV_DTYPE, IS_BLOCK_SPARSE,      \
-                                  PARTITION_SIZE>                              \
+                                  PARTITION_SIZE,big_seq>                              \
       <<<grid, block, shared_mem_size, stream>>>(                              \
           exp_sums_ptr, max_logits_ptr, tmp_out_ptr, query_ptr, key_cache_ptr, \
           value_cache_ptr, num_kv_heads, scale, block_tables_ptr,              \
@@ -841,6 +873,17 @@ void paged_attention_v1(
       <<<reduce_grid, block, reduce_shared_mem_size, stream>>>(                \
           out_ptr, exp_sums_ptr, max_logits_ptr, tmp_out_ptr, seq_lens_ptr,    \
           max_num_partitions);
+
+#define BOOL_SWITCH(COND, CONST_NAME, ...)                                     \
+  [&] {                                                                        \
+    if (COND) {                                                                \
+      constexpr static bool CONST_NAME = true;                                 \
+      return __VA_ARGS__();                                                    \
+    } else {                                                                   \
+      constexpr static bool CONST_NAME = false;                                \
+      return __VA_ARGS__();                                                    \
+    }                                                                          \
+  }()
 
 template <typename T, typename CACHE_T, int BLOCK_SIZE,
           vllm::Fp8KVCacheDataType KV_DTYPE, bool IS_BLOCK_SPARSE,
@@ -896,35 +939,37 @@ void paged_attention_v2_launcher(
   dim3 block(NUM_THREADS);
   const at::cuda::OptionalCUDAGuard device_guard(device_of(query));
   const cudaStream_t stream = at::cuda::getCurrentCUDAStream();
-  switch (head_size) {
-    // NOTE(woosuk): To reduce the compilation time, we only compile for the
-    // head sizes that we use in the model. However, we can easily extend this
-    // to support any head size which is a multiple of 16.
-    case 64:
-      LAUNCH_PAGED_ATTENTION_V2(64);
-      break;
-    case 80:
-      LAUNCH_PAGED_ATTENTION_V2(80);
-      break;
-    case 96:
-      LAUNCH_PAGED_ATTENTION_V2(96);
-      break;
-    case 112:
-      LAUNCH_PAGED_ATTENTION_V2(112);
-      break;
-    case 128:
-      LAUNCH_PAGED_ATTENTION_V2(128);
-      break;
-    case 192:
-      LAUNCH_PAGED_ATTENTION_V2(192);
-      break;
-    case 256:
-      LAUNCH_PAGED_ATTENTION_V2(256);
-      break;
-    default:
-      TORCH_CHECK(false, "Unsupported head size: ", head_size);
-      break;
-  }
+  BOOL_SWITCH(num_seqs>=16,big_seq,[&]{
+    switch (head_size) {
+      // NOTE(woosuk): To reduce the compilation time, we only compile for the
+      // head sizes that we use in the model. However, we can easily extend this
+      // to support any head size which is a multiple of 16.
+      case 64:
+        LAUNCH_PAGED_ATTENTION_V2(64);
+        break;
+      case 80:
+        LAUNCH_PAGED_ATTENTION_V2(80);
+        break;
+      case 96:
+        LAUNCH_PAGED_ATTENTION_V2(96);
+        break;
+      case 112:
+        LAUNCH_PAGED_ATTENTION_V2(112);
+        break;
+      case 128:
+        LAUNCH_PAGED_ATTENTION_V2(128);
+        break;
+      case 192:
+        LAUNCH_PAGED_ATTENTION_V2(192);
+        break;
+      case 256:
+        LAUNCH_PAGED_ATTENTION_V2(256);
+        break;
+      default:
+        TORCH_CHECK(false, "Unsupported head size: ", head_size);
+        break;
+    }
+  });
 }
 
 #define CALL_V2_LAUNCHER(T, CACHE_T, BLOCK_SIZE, KV_DTYPE, IS_BLOCK_SPARSE)   \
