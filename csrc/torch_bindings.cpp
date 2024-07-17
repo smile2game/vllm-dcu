@@ -89,6 +89,15 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
       "                 Tensor cos_sin_cache, bool is_neox) -> ()");
   ops.impl("rotary_embedding", torch::kCUDA, &rotary_embedding);
 
+  // Rotary embedding TGI for TGI
+  // Apply GPT-NeoX or GPT-J style rotary embedding to query and key.
+  ops.def(
+      "rotary_embedding_tgi(Tensor! query, Tensor! key,"
+      "                 int head_size, Tensor cos_cache,"
+      "                 Tensor sin_cache, bool is_neox) -> ()");
+//   ops.def("rotary_embedding_tgi",&rotary_embedding_tgi);
+  ops.impl("rotary_embedding_tgi", torch::kCUDA, &rotary_embedding_tgi);
+
   // Apply GPT-NeoX or GPT-J style rotary embedding to query and key
   // (supports multiple loras).
   ops.def(
