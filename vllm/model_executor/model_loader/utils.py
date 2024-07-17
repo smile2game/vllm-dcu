@@ -29,6 +29,8 @@ def get_model_architecture(
             os.environ['GEMM_PAD'] = '1'
         if os.getenv('FA_PAD') != '1': 
             os.environ['FA_PAD'] = '0'
+    else:
+        os.environ['LLAMA_NN'] = '0'
     # Special handling for quantized Mixtral.
     # FIXME(woosuk): This is a temporary hack.
     if (model_config.quantization is not None
