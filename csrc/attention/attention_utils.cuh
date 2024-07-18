@@ -26,92 +26,31 @@
 
 namespace vllm {
 
-inline __device__ void v_dot2_f32_f16(float& a, const uint32_t &  b,const uint32_t &  c) {
-  asm volatile("v_dot2_f32_f16 %0, %1, %2, %0;": "=v"(a): "v"(b), "v"(c), "0"(a));
-}
-
-inline __device__ void v_pk_fma_f16(uint32_t& a, const uint32_t &  b,const uint32_t &  c){
-   asm volatile("v_pk_fma_f16 %0, %1, %2, %3;": "=v"(a) : "v"(b), "v"(c), "v"(a));
-}
-
-inline __device__ void v_dot2_f32_f16(float& a,const uint2 &  b,const uint2 &  c) {
-  v_dot2_f32_f16(a, b.x, c.x);
-  v_dot2_f32_f16(a, b.y, c.y);
-}
-
-inline __device__ void v_dot2_f32_f16(float& a,const uint4 &  b,const uint4 &  c) {
-  v_dot2_f32_f16(a, b.x, c.x);
-  v_dot2_f32_f16(a, b.y, c.y);
-  v_dot2_f32_f16(a, b.z, c.z);
-  v_dot2_f32_f16(a, b.w, c.w);
-}
-
-inline __device__ float add_half2(uint32_t a){
- union {
-    uint32_t u32;
-    half u16[2];
-  } tmp;
-  tmp.u32=a;
-  return static_cast<float>(tmp.u16[0]+tmp.u16[1]);
-}
-
-inline __device__ void v_pk_fma_f16x8(float& a,const uint4 &  b,const uint4 &  c) {
-  uint32_t tmp = mul<uint32_t, uint32_t, uint32_t>(b.x,c.x);
-  v_pk_fma_f16(tmp,b.y,c.y);
-  v_pk_fma_f16(tmp,b.z,c.z);
-  v_pk_fma_f16(tmp,b.w,c.w);
-  a+=add_half2(tmp);
-}
-
-// Q*K^T operation. fp16
-// template <int THREAD_GROUP_SIZE, typename Vec, int N, typename scalar_t, std::enable_if_t<std::is_same<scalar_t, uint16_t>::value, int> = 0>
+// Q*K^T operation.
 template <int THREAD_GROUP_SIZE, typename Vec, int N>
 inline __device__ float qk_dot_(const Vec (&q)[N], const Vec (&k)[N]) {
-  
-  float qk =0;
-  // Compute the parallel products for Q*K^T (treat vector lanes separately).
-  #pragma unroll
-  for (int ii = 0; ii < N; ++ii) {
-    v_dot2_f32_f16(qk,q[ii],k[ii]);
-  }
-  // Finalize the reduction across lanes.
-#pragma unroll
-  for (int mask = THREAD_GROUP_SIZE / 2; mask >= 1; mask /= 2) {
-    qk += VLLM_SHFL_XOR_SYNC(qk, mask);
-  }
-  return qk;
-}
-
-// Q*K^T operation. //bf16
-// template <int THREAD_GROUP_SIZE, typename Vec, int N, typename scalar_t, std::enable_if_t<!std::is_same<scalar_t, uint16_t>::value, int> = 0>
-template <int THREAD_GROUP_SIZE, typename Vec, int N>
-inline __device__ float qk_dot_v1(const Vec (&q)[N], const Vec (&k)[N]) {
-
   using A_vec = typename FloatVec<Vec>::Type;
+  // Compute the parallel products for Q*K^T (treat vector lanes separately).
   A_vec qk_vec = mul<A_vec, Vec, Vec>(q[0], k[0]);
-  #pragma unroll
+#pragma unroll
   for (int ii = 1; ii < N; ++ii) {
     qk_vec = fma(q[ii], k[ii], qk_vec);
   }
-  float qk = sum(qk_vec);
+
   // Finalize the reduction across lanes.
+  float qk = sum(qk_vec);
 #pragma unroll
   for (int mask = THREAD_GROUP_SIZE / 2; mask >= 1; mask /= 2) {
     qk += VLLM_SHFL_XOR_SYNC(qk, mask);
   }
   return qk;
 }
-
 
 template <typename T, int THREAD_GROUP_SIZE>
 struct Qk_dot {
   template <typename Vec, int N>
   static inline __device__ float dot(const Vec (&q)[N], const Vec (&k)[N]) {
     return qk_dot_<THREAD_GROUP_SIZE>(q, k);
-  }
-  template <typename Vec, int N>
-  static inline __device__ float dot_v1(const Vec (&q)[N], const Vec (&k)[N]) {
-    return qk_dot_v1<THREAD_GROUP_SIZE>(q, k);
   }
 };
 
