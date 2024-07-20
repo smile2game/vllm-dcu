@@ -115,7 +115,10 @@ class UnquantizedLinearMethod(LinearMethodBase):
         
         if self.use_llama_nn:
             if bias is not None:
-                return torch.addmm(bias, x, weight)
+                if len(x.shape) == 2: 
+                    return torch.addmm(bias, x, weight)
+                else:
+                    return torch.matmul(x, weight) + bias
             else:
                 return torch.matmul(x, weight)
         else:
