@@ -8,6 +8,7 @@ import torch
 from torch import nn
 from torch.nn import LayerNorm
 import os
+import re
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig, LoRAConfig
@@ -28,6 +29,7 @@ from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import SamplerOutput
 from vllm.transformers_utils.configs import ChatGLMConfig
+from vllm import _custom_ops as ops
 
 
 class GLMAttention(nn.Module):
@@ -102,8 +104,6 @@ class GLMAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.query_key_value(hidden_states)
-        if os.environ.get('FA_PAD') == '1' and qkv.shape[-1] == 12320:
-            qkv = qkv[...,:-32]
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(position_ids, q, k)
         context_layer = self.attn(
@@ -356,6 +356,7 @@ class ChatGLMForCausalLM(nn.Module):
         self.lm_head_weight = self.transformer.output_layer.weight
         self.logits_processor = LogitsProcessor(config.padded_vocab_size)
         self.sampler = Sampler()
+        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def forward(
         self,
@@ -396,3 +397,23 @@ class ChatGLMForCausalLM(nn.Module):
             weight_loader = getattr(param, "weight_loader",
                                     default_weight_loader)
             weight_loader(param, loaded_weight)
+        
+        if self.use_llama_nn:
+            lay_key_words = [
+                "self_attention.query_key_value.weight",
+                "self_attention.dense.weight",
+                "mlp.dense_h_to_4h.weight",
+                "mlp.dense_4h_to_h.weight"
+            ]
+            combined_words = "|".join(lay_key_words)
+            
+            for layername, weight in params_dict.items():
+                matches = re.findall(combined_words, layername)
+                if matches:                  
+                    _weight = torch.zeros_like(weight.data)
+                    ori_shape =_weight.shape
+                    
+                    ops.trans_w16_gemm(_weight, weight.data, _weight.shape[0], _weight.shape[1])
+                    weight.data.copy_(_weight)
+                    
+                    weight.data=weight.data.reshape(ori_shape[1], -1)

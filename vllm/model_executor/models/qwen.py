@@ -298,28 +298,21 @@ class QWenLMHeadModel(nn.Module):
                                         default_weight_loader)
                 weight_loader(param, loaded_weight)
         if self.use_llama_nn:
-            #以上代码模型权重已经加载完了
-            #以下代码使用正则匹配来找出要修改的weight
             lay_key_words = [
-                "self_attn.qkv_proj.weight",
-                "self_attn.o_proj.weight",
+                "attn.c_attn.weight",
+                "attn.c_proj.weight",
                 "mlp.gate_up_proj.weight",
-                "mlp.down_proj.weight"
+                "mlp.c_proj.weight"
             ]
-            #合并所有关键词为一个正则表达式
             combined_words = "|".join(lay_key_words)
             
             for layername, weight in params_dict.items():
-                #print("key:\n",key)
                 matches = re.findall(combined_words, layername)
-                if matches:                    
-                    #print(layername)
-                    # print(weight.data)
-                    #创建一个跟value一样大的tensor
+                if matches:         
                     _weight = torch.zeros_like(weight.data)
                     ori_shape =_weight.shape
                     
-                    ops.trans_w16_gemm(_weight,weight.data,_weight.shape[0],_weight.shape[1])
+                    ops.trans_w16_gemm(_weight, weight.data, _weight.shape[0], _weight.shape[1])
                     weight.data.copy_(_weight)
                     
                     weight.data=weight.data.reshape(ori_shape[1],-1)

@@ -25,6 +25,7 @@ import torch
 from torch import nn
 from transformers import PretrainedConfig
 import os
+import re
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig, LoRAConfig
@@ -45,6 +46,7 @@ from vllm.model_executor.layers.vocab_parallel_embedding import (
 from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import SamplerOutput
+from vllm import _custom_ops as ops
 
 
 def _get_alibi_slopes(total_num_heads: int) -> torch.Tensor:
@@ -179,8 +181,6 @@ class BaiChuanAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.W_pack(hidden_states)
-        if os.environ.get('FA_PAD') == '1' and qkv.shape[-1] == 12320:
-            qkv = qkv[...,:-32]
         q, k, v = qkv.chunk(chunks=3, dim=-1)
         if self.postion_embedding != "ALIBI":
             q, k = self.rotary_emb(positions, q, k)
@@ -329,6 +329,7 @@ class BaiChuanBaseForCausalLM(nn.Module):
         self.lm_head = ParallelLMHead(config.vocab_size, config.hidden_size)
         self.logits_processor = LogitsProcessor(config.vocab_size)
         self.sampler = Sampler()
+        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def forward(
         self,
@@ -396,6 +397,26 @@ class BaiChuanBaseForCausalLM(nn.Module):
                 weight_loader = getattr(param, "weight_loader",
                                         default_weight_loader)
                 weight_loader(param, loaded_weight)
+                
+            if self.use_llama_nn:
+                lay_key_words = [
+                    "self_attn.W_pack.weight",
+                    "self_attn.o_proj.weight",
+                    "mlp.gate_up_proj.weight",
+                    "mlp.down_proj.weight"
+                ]
+                combined_words = "|".join(lay_key_words)
+                
+                for layername, weight in params_dict.items():
+                    matches = re.findall(combined_words, layername)
+                    if matches:                  
+                        _weight = torch.zeros_like(weight.data)
+                        ori_shape =_weight.shape
+                        
+                        ops.trans_w16_gemm(_weight, weight.data, _weight.shape[0], _weight.shape[1])
+                        weight.data.copy_(_weight)
+                        
+                        weight.data=weight.data.reshape(ori_shape[1], -1)
 
 
 class BaichuanForCausalLM(BaiChuanBaseForCausalLM):

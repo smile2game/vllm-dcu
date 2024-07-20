@@ -1548,7 +1548,7 @@ __global__ void trans_w16_gemm_cudakernel(int64_t num_kernels,T* dst,const T* sr
     int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
     if(id >= num_kernels) return;
 
-    int64_t j=id%row;  //dst的列id
+    int64_t j=id%row; 
     int64_t i=id/row;
 
     dst[i*row+j]=src[j*col+i];

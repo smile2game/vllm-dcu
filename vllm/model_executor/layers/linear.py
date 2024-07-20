@@ -89,7 +89,6 @@ class UnquantizedLinearMethod(LinearMethodBase):
         self.separate_bias_add = separate_bias_add
         self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
         
-
     def create_weights(self, layer: torch.nn.Module,
                        input_size_per_partition: int,
                        output_partition_sizes: List[int], input_size: int,
@@ -110,15 +109,13 @@ class UnquantizedLinearMethod(LinearMethodBase):
         weight = layer.weight
         
         if self.separate_bias_add:
-            
             if bias is not None:
                 return F.linear(x, weight) + bias
             return F.linear(x, weight)
         
         if self.use_llama_nn:
-          
             if bias is not None:
-                return torch.matmul(x, weight) +bias
+                return torch.addmm(bias, x, weight)
             else:
                 return torch.matmul(x, weight)
         else:

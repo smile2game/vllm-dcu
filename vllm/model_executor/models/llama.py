@@ -159,8 +159,6 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
-        if os.environ.get('FA_PAD') == '1' and qkv.shape[-1] == 12320:
-            qkv = qkv[...,:-32]
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
@@ -444,29 +442,24 @@ class LlamaForCausalLM(nn.Module):
                 weight_loader(param, loaded_weight)  
             
         if self.use_llama_nn:
-            #以上代码模型权重已经加载完了
-            #以下代码使用正则匹配来找出要修改的weight
             lay_key_words = [
                 "self_attn.qkv_proj.weight",
                 "self_attn.o_proj.weight",
                 "mlp.gate_up_proj.weight",
                 "mlp.down_proj.weight"
             ]
-            #合并所有关键词为一个正则表达式
             combined_words = "|".join(lay_key_words)
             
             for layername, weight in params_dict.items():
-                #print("key:\n",key)
                 matches = re.findall(combined_words, layername)
-                if matches:                    
-                    #创建一个跟value一样大的tensor
+                if matches:                  
                     _weight = torch.zeros_like(weight.data)
                     ori_shape =_weight.shape
                     
-                    ops.trans_w16_gemm(_weight,weight.data,_weight.shape[0],_weight.shape[1])
+                    ops.trans_w16_gemm(_weight, weight.data, _weight.shape[0], _weight.shape[1])
                     weight.data.copy_(_weight)
                     
-                    weight.data=weight.data.reshape(ori_shape[1],-1)
+                    weight.data=weight.data.reshape(ori_shape[1], -1)
                     
     # If this function is called, it should always initialize KV cache scale
     # factors (or else raise an exception). Thus, handled exceptions should
