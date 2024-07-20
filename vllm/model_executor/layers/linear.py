@@ -108,20 +108,15 @@ class UnquantizedLinearMethod(LinearMethodBase):
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         weight = layer.weight
-        #print("**************matmul weight.shape:",weight.shape)
-        #print("self.use_llama_nn:",self.use_llama_nn)
         
         if self.separate_bias_add:
-            #print("********self.separate_bias_add")
             
             if bias is not None:
                 return F.linear(x, weight) + bias
             return F.linear(x, weight)
         
         if self.use_llama_nn:
-            # print("**************matmul input.shape:",x.shape)
-            # print("**************matmul weight.shape:",weight.shape)
-            
+          
             if bias is not None:
                 return torch.matmul(x, weight) +bias
             else:

@@ -459,14 +459,10 @@ class LlamaForCausalLM(nn.Module):
                 #print("key:\n",key)
                 matches = re.findall(combined_words, layername)
                 if matches:                    
-                    #print(layername)
-                    # print(weight.data)
                     #创建一个跟value一样大的tensor
                     _weight = torch.zeros_like(weight.data)
                     ori_shape =_weight.shape
                     
-                    # if layername=="model.layers.0.self_attn.qkv_proj.weight":
-                    #     print("weight.data[0:5][0:5]:",weight.data[0:5][0:5])
                     ops.trans_w16_gemm(_weight,weight.data,_weight.shape[0],_weight.shape[1])
                     weight.data.copy_(_weight)
                     
