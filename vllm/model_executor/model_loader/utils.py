@@ -25,8 +25,8 @@ def get_model_architecture(
     if architectures == ['LlamaForCausalLM'] or architectures == ['Qwen2ForCausalLM'] or architectures == ['ChatGLMModel'] or architectures == ['BaichuanForCausalLM']:
         if os.getenv('LLAMA_NN') != '0': 
             os.environ['LLAMA_NN'] = '1'
-        if os.getenv('GEMM_PAD') != '0': 
-            os.environ['GEMM_PAD'] = '1'
+        if os.getenv('GEMM_PAD') != '1': 
+            os.environ['GEMM_PAD'] = '0'
         if os.getenv('FA_PAD') != '1': 
             os.environ['FA_PAD'] = '0'
     else:

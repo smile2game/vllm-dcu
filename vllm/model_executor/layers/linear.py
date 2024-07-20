@@ -867,17 +867,19 @@ class RowParallelLinear(LinearBase):
 
         assert param_data.shape == loaded_weight.shape
         
-        # if self.use_llama_nn:
-        #     loaded_weight = loaded_weight.transpose(0, 1)
-        #     loaded_weight=loaded_weight.reshape(param_data.shape[0],-1)
-        # param_data.copy_(loaded_weight)
-        
-        param_data.copy_(loaded_weight)
         if self.use_llama_nn:
-            if gemm_bank_conf(param.data.shape[0]) and self.use_gemm_pad:
-                param.data = pad_weight(param.data, 32)  
-            param.data = param.data.transpose(0, 1) 
-            param.data=param.data.reshape(param.data.shape[1],-1)
+            if not self.use_gemm_pad:
+                loaded_weight = loaded_weight.transpose(0, 1)
+                loaded_weight=loaded_weight.reshape(param_data.shape[0],-1)
+                param_data.copy_(loaded_weight)
+            else:
+                param_data.copy_(loaded_weight)
+                if gemm_bank_conf(param.data.shape[0]) and self.use_gemm_pad:
+                    param.data = pad_weight(param.data, 32)   
+                param.data = param.data.transpose(0, 1) 
+                param.data=param.data.reshape(param.data.shape[1],-1)
+        else:
+            param_data.copy_(loaded_weight)
 
     def forward(self, input_):
         # Set up backprop all-reduce.
