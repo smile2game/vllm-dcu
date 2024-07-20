@@ -27,6 +27,7 @@ import torch
 from torch import nn
 from transformers import LlamaConfig
 import os
+import re
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig, LoRAConfig
@@ -50,6 +51,7 @@ from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import SamplerOutput
 from vllm.utils import is_hip, print_warning_once
 
+from vllm import _custom_ops as ops
 
 class LlamaMLP(nn.Module):
 
@@ -363,6 +365,7 @@ class LlamaForCausalLM(nn.Module):
         self.logits_processor = LogitsProcessor(self.unpadded_vocab_size,
                                                 config.vocab_size, logit_scale)
         self.sampler = Sampler()
+        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def forward(
         self,
@@ -438,8 +441,37 @@ class LlamaForCausalLM(nn.Module):
                 param = params_dict[name]
                 weight_loader = getattr(param, "weight_loader",
                                         default_weight_loader)
-                weight_loader(param, loaded_weight)
-
+                weight_loader(param, loaded_weight)  
+            
+        if self.use_llama_nn:
+            #以上代码模型权重已经加载完了
+            #以下代码使用正则匹配来找出要修改的weight
+            lay_key_words = [
+                "self_attn.qkv_proj.weight",
+                "self_attn.o_proj.weight",
+                "mlp.gate_up_proj.weight",
+                "mlp.down_proj.weight"
+            ]
+            #合并所有关键词为一个正则表达式
+            combined_words = "|".join(lay_key_words)
+            
+            for layername, weight in params_dict.items():
+                #print("key:\n",key)
+                matches = re.findall(combined_words, layername)
+                if matches:                    
+                    #print(layername)
+                    # print(weight.data)
+                    #创建一个跟value一样大的tensor
+                    _weight = torch.zeros_like(weight.data)
+                    ori_shape =_weight.shape
+                    
+                    # if layername=="model.layers.0.self_attn.qkv_proj.weight":
+                    #     print("weight.data[0:5][0:5]:",weight.data[0:5][0:5])
+                    ops.trans_w16_gemm(_weight,weight.data,_weight.shape[0],_weight.shape[1])
+                    weight.data.copy_(_weight)
+                    
+                    weight.data=weight.data.reshape(ori_shape[1],-1)
+                    
     # If this function is called, it should always initialize KV cache scale
     # factors (or else raise an exception). Thus, handled exceptions should
     # make sure to leave KV cache scale factors in a known good (dummy) state

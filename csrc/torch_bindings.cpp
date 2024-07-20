@@ -159,6 +159,10 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
   ops.def("gptq_shuffle(Tensor! q_weight, Tensor q_perm, int bit) -> ()");
   ops.impl("gptq_shuffle", torch::kCUDA, &gptq_shuffle);
 
+  // trans w16
+  ops.def("trans_w16_gemm(Tensor! dst, Tensor src, int row,int col) -> ()");
+  ops.impl("trans_w16_gemm", torch::kCUDA, &trans_w16_gemm);
+
   // Quantized GEMM for SqueezeLLM.
   ops.def(
       "squeezellm_gemm(Tensor vec, Tensor mat, Tensor! mul, Tensor "

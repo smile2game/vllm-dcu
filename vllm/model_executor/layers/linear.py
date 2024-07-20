@@ -14,6 +14,7 @@ from vllm.logger import init_logger
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig, QuantizeMethodBase)
 from vllm.model_executor.utils import set_weight_attrs
+
 import os
 
 logger = init_logger(__name__)
@@ -41,34 +42,6 @@ def adjust_bitsandbytes_shard(param: Parameter,
 
     return quantized_size, quantized_offset
 
-
-def pad_weight(weight: torch.Tensor, num_pad: int, pad_dim: int = 0):  
-    if weight.dim() == 1:  
-        padding = torch.zeros(num_pad, dtype=weight.dtype, device=weight.device)  
-        padded_weight = torch.cat([weight, padding], dim=0)  
-    elif weight.dim() == 2:   
-        if pad_dim == 0:  
-            padding = torch.zeros(num_pad, weight.shape[1], dtype=weight.dtype, device=weight.device)  
-            padded_weight = torch.cat([weight, padding], dim=0)  
-        elif pad_dim == 1:  
-            padding = torch.zeros(weight.shape[0], num_pad, dtype=weight.dtype, device=weight.device)  
-            padded_weight = torch.cat([weight, padding], dim=1)  
-        else:  
-            raise ValueError("pad_dim must be 0 or 1")  
-    else:  
-        raise ValueError("Weight tensor must be 1D or 2D")     
-    return padded_weight  
-
-
-def gemm_bank_conf(weight):  
-    is_mul_of_2048 = weight % 2048 == 0     
-    is_power_of_two = (weight & (weight - 1)) == 0 and weight != 0  
-      
-    if is_mul_of_2048 and is_power_of_two:  
-        return True 
-    else:  
-        return False  
-    
 
 class LinearMethodBase(QuantizeMethodBase):
     """Base class for different (maybe quantized) linear methods."""
@@ -115,6 +88,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
     def __init__(self, separate_bias_add: bool = False):
         self.separate_bias_add = separate_bias_add
         self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
+        
 
     def create_weights(self, layer: torch.nn.Module,
                        input_size_per_partition: int,
@@ -134,20 +108,24 @@ class UnquantizedLinearMethod(LinearMethodBase):
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         weight = layer.weight
+        #print("**************matmul weight.shape:",weight.shape)
+        #print("self.use_llama_nn:",self.use_llama_nn)
+        
         if self.separate_bias_add:
+            #print("********self.separate_bias_add")
+            
             if bias is not None:
                 return F.linear(x, weight) + bias
             return F.linear(x, weight)
         
         if self.use_llama_nn:
-            weight = weight.reshape(weight.shape[1], -1) 
+            # print("**************matmul input.shape:",x.shape)
+            # print("**************matmul weight.shape:",weight.shape)
+            
             if bias is not None:
-                return torch.matmul(x, weight) + bias
+                return torch.matmul(x, weight) +bias
             else:
-                if gemm_bank_conf(weight.shape[1] - 32) and os.environ['GEMM_PAD'] == '1':
-                    return torch.matmul(x, weight[:,:-32]) 
-                else:
-                    return torch.matmul(x, weight) 
+                return torch.matmul(x, weight)
         else:
             return F.linear(x, weight, bias)
 
@@ -308,7 +286,6 @@ class ColumnParallelLinear(LinearBase):
             })
         else:
             self.register_parameter("bias", None)
-        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def weight_loader(self, param: Parameter, loaded_weight: torch.Tensor):
         # Special case for Fp8 scales.
@@ -330,9 +307,6 @@ class ColumnParallelLinear(LinearBase):
                                                                  shard_id=0)
 
         assert param_data.shape == loaded_weight.shape
-        if self.use_llama_nn:
-            loaded_weight = loaded_weight.transpose(0, 1)
-            loaded_weight = loaded_weight.reshape(param_data.shape[0],-1)
         param_data.copy_(loaded_weight)
 
     def forward(self, input_):
@@ -397,8 +371,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                          skip_bias_add=skip_bias_add,
                          params_dtype=params_dtype,
                          quant_config=quant_config)
-        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
-
 
     def weight_loader(self,
                       param: Parameter,
@@ -477,21 +449,15 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                 # Special case for Marlin.
                 shard_size, shard_offset = adjust_marlin_shard(
                     param, shard_size, shard_offset)
-   
+
             use_bitsandbytes = getattr(param, "use_bitsandbytes", False)
             if use_bitsandbytes:
                 shard_size = loaded_weight.shape[output_dim]
                 shard_offset = loaded_weight.shape[output_dim] * \
                     loaded_shard_id
 
-            if self.use_llama_nn:
-                param_data_ = param_data.narrow(output_dim, shard_offset,
-                                            shard_size)
-            else:
-                param_data = param_data.narrow(output_dim, shard_offset,
-                                            shard_size)
-
-
+            param_data = param_data.narrow(output_dim, shard_offset,
+                                           shard_size)
             start_idx = tp_rank * shard_size
             loaded_weight = loaded_weight.narrow(output_dim, start_idx,
                                                  shard_size)
@@ -527,17 +493,9 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
 
             if len(loaded_weight.shape) == 0:
                 loaded_weight = loaded_weight.reshape(1)
-                
-        if self.use_llama_nn:
-            assert param_data_.shape == loaded_weight.shape
-            param_data_.copy_(loaded_weight)
-            if loaded_shard_id == 1 and len(param_data.shape) == 2:
-                param_data = param_data.transpose(0, 1)
-                param.data = param_data.reshape(param_data.shape[1], -1)
-        else:
-            assert param_data.shape == loaded_weight.shape
-            param_data.copy_(loaded_weight)
 
+        assert param_data.shape == loaded_weight.shape
+        param_data.copy_(loaded_weight)
 
 
 class QKVParallelLinear(ColumnParallelLinear):
@@ -597,6 +555,7 @@ class QKVParallelLinear(ColumnParallelLinear):
             self.num_kv_heads * self.head_size * tp_size,  # k_proj
             self.num_kv_heads * self.head_size * tp_size,  # v_proj 
         ]
+
         super().__init__(input_size=input_size,
                          output_size=output_size,
                          bias=bias,
@@ -604,8 +563,6 @@ class QKVParallelLinear(ColumnParallelLinear):
                          skip_bias_add=skip_bias_add,
                          params_dtype=params_dtype,
                          quant_config=quant_config)
-        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
-        self.use_fa_pad = os.environ.get('FA_PAD') == '1'
 
     def weight_loader(self,
                       param: Parameter,
@@ -713,14 +670,9 @@ class QKVParallelLinear(ColumnParallelLinear):
                 }
                 shard_size, shard_offset = adjust_bitsandbytes_shard(
                     param, orig_qkv_offsets, loaded_shard_id)
-            
-            if self.use_llama_nn:
-                param_data_ = param_data.narrow(output_dim, shard_offset,
+
+            param_data = param_data.narrow(output_dim, shard_offset,
                                            shard_size)
-            else:
-                param_data = param_data.narrow(output_dim, shard_offset,
-                                            shard_size)
-                                               
             if loaded_shard_id == "q":
                 shard_id = tp_rank
             else:
@@ -752,25 +704,15 @@ class QKVParallelLinear(ColumnParallelLinear):
                     "Loading a weight without `output_dim` attribute in "
                     "QKVParallelLinear, assume the weight is the same "
                     "for all partitions.")
+
         if len(param_data.shape) == 0:
             param_data = param_data.reshape(1)
 
         if len(loaded_weight.shape) == 0:
             loaded_weight = loaded_weight.reshape(1)
-        
-        if self.use_llama_nn:
-            assert param_data_.shape == loaded_weight.shape
-            param_data_.copy_(loaded_weight)
-            if loaded_shard_id == "v" and len(param_data.shape) == 2:
-                if self.use_fa_pad and param_data.shape[0]== 12288:
-                    param_data = pad_weight(param.data, 32)
-                param_data = param_data.transpose(0, 1) 
-                param.data = param_data.reshape(param_data.shape[1], -1) 
-            if self.use_fa_pad and param_data.shape[0]== 12288 and loaded_shard_id == "v" and len(param_data.shape) == 1:
-                 param.data = pad_weight(param.data, 32)
-        else:
-            assert param_data.shape == loaded_weight.shape
-            param_data.copy_(loaded_weight)
+
+        assert param_data.shape == loaded_weight.shape
+        param_data.copy_(loaded_weight)
 
 
 class RowParallelLinear(LinearBase):
@@ -839,8 +781,6 @@ class RowParallelLinear(LinearBase):
             })
         else:
             self.register_parameter("bias", None)
-        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
-        self.use_gemm_pad = os.environ.get('GEMM_PAD') == '1'
 
     def weight_loader(self, param: Parameter, loaded_weight: torch.Tensor):
         # Special case for Fp8 scales.
@@ -866,20 +806,7 @@ class RowParallelLinear(LinearBase):
             loaded_weight = loaded_weight.reshape(1)
 
         assert param_data.shape == loaded_weight.shape
-        
-        if self.use_llama_nn:
-            if not self.use_gemm_pad:
-                loaded_weight = loaded_weight.transpose(0, 1)
-                loaded_weight=loaded_weight.reshape(param_data.shape[0],-1)
-                param_data.copy_(loaded_weight)
-            else:
-                param_data.copy_(loaded_weight)
-                if gemm_bank_conf(param.data.shape[0]) and self.use_gemm_pad:
-                    param.data = pad_weight(param.data, 32)   
-                param.data = param.data.transpose(0, 1) 
-                param.data=param.data.reshape(param.data.shape[1],-1)
-        else:
-            param_data.copy_(loaded_weight)
+        param_data.copy_(loaded_weight)
 
     def forward(self, input_):
         # Set up backprop all-reduce.
