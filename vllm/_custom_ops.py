@@ -164,6 +164,10 @@ def gptq_shuffle(q_weight: torch.Tensor, q_perm: torch.Tensor,
                  bit: int) -> None:
     torch.ops._C.gptq_shuffle(q_weight, q_perm, bit)
 
+# trans_w16
+def trans_w16_gemm(dst: torch.Tensor, src: torch.Tensor,
+                row:int, col:int) -> None :
+    torch.ops._C.trans_w16_gemm(dst,src,row,col)
 
 # squeezellm
 def squeezellm_gemm(vec: torch.Tensor, mat: torch.Tensor, mul: torch.Tensor,

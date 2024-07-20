@@ -10,6 +10,9 @@ import torch
 from torch import nn
 from transformers import PretrainedConfig
 
+import os
+import re
+
 from vllm.attention import Attention, AttentionMetadata
 from vllm.config import CacheConfig
 from vllm.distributed import get_tensor_model_parallel_world_size
@@ -29,7 +32,7 @@ from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import SamplerOutput
 
-
+from vllm import _custom_ops as ops
 class QWenMLP(nn.Module):
 
     def __init__(
@@ -199,6 +202,7 @@ class QWenModel(nn.Module):
             for _ in range(config.num_hidden_layers)
         ])
         self.ln_f = RMSNorm(config.hidden_size, eps=config.layer_norm_epsilon)
+        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def forward(
         self,
@@ -237,6 +241,7 @@ class QWenLMHeadModel(nn.Module):
         self.lm_head = ParallelLMHead(config.vocab_size, config.hidden_size)
         self.logits_processor = LogitsProcessor(config.vocab_size)
         self.sampler = Sampler()
+        self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
 
     def forward(
         self,
@@ -292,3 +297,31 @@ class QWenLMHeadModel(nn.Module):
                 weight_loader = getattr(param, "weight_loader",
                                         default_weight_loader)
                 weight_loader(param, loaded_weight)
+        if self.use_llama_nn:
+            #以上代码模型权重已经加载完了
+            #以下代码使用正则匹配来找出要修改的weight
+            lay_key_words = [
+                "self_attn.qkv_proj.weight",
+                "self_attn.o_proj.weight",
+                "mlp.gate_up_proj.weight",
+                "mlp.down_proj.weight"
+            ]
+            #合并所有关键词为一个正则表达式
+            combined_words = "|".join(lay_key_words)
+            
+            for layername, weight in params_dict.items():
+                #print("key:\n",key)
+                matches = re.findall(combined_words, layername)
+                if matches:                    
+                    #print(layername)
+                    # print(weight.data)
+                    #创建一个跟value一样大的tensor
+                    _weight = torch.zeros_like(weight.data)
+                    ori_shape =_weight.shape
+                    
+                    ops.trans_w16_gemm(_weight,weight.data,_weight.shape[0],_weight.shape[1])
+                    weight.data.copy_(_weight)
+                    
+                    weight.data=weight.data.reshape(ori_shape[1],-1)
+                    
+                    

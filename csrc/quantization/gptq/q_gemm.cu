@@ -1542,6 +1542,26 @@ void gemm_half_q_half_cuda(cublasHandle_t cublas_handle, const half* a,
   }
 }
 
+template <typename T>
+__global__ void trans_w16_gemm_cudakernel(int64_t num_kernels,T* dst,const T* src,int64_t row,int64_t col)
+{
+    int64_t id = blockIdx.x * blockDim.x + threadIdx.x;
+    if(id >= num_kernels) return;
+
+    int64_t j=id%row;  //dst的列id
+    int64_t i=id/row;
+
+    dst[i*row+j]=src[j*col+i];
+}
+
+
+void trans_w16_gemm_cuda(half* dst,const half* src,int64_t row,int64_t col){
+  const cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+  int64_t num_kernels=row*col;
+  int block_size=256;
+  trans_w16_gemm_cudakernel<<<(num_kernels+block_size-1)/block_size,block_size, 0, stream>>>(num_kernels,dst,src,row,col);
+}
+
 __global__ void shuffle_4bit_kernel(uint32_t* __restrict__ b_q_weight,
                                     const int size_k, const int size_n) {
   int n = blockIdx.x * THREADS_X + threadIdx.x;
@@ -1845,6 +1865,17 @@ torch::Tensor gptq_gemm(torch::Tensor a, torch::Tensor b_q_weight,
       b_gptq_qzeros.size(0),  // group number
       use_exllama, bit);
   return c;
+}
+
+void trans_w16_gemm(torch::Tensor dst,torch::Tensor src,int64_t row,int64_t col){
+  //row是原矩阵的行，col是原矩阵的列
+  const at::cuda::OptionalCUDAGuard device_guard(device_of(src));
+  vllm::gptq::trans_w16_gemm_cuda(
+              (half*)dst.data_ptr(),
+              (const half*)src.data_ptr(),
+              row,
+              col
+            );
 }
 
 void gptq_shuffle(torch::Tensor q_weight, torch::Tensor q_perm, int64_t bit) {
