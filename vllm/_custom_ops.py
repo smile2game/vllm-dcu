@@ -2,6 +2,10 @@ import contextlib
 from typing import List, Optional, Tuple, Type
 
 import torch
+try:
+    import gptq_kernels
+except ImportError as e:
+    raise RuntimeError("Failed to import gptq_kernel with, Please install gptq_kernels from csrc/quantization/gptq ")
 
 try:
     import vllm._C
@@ -156,13 +160,16 @@ def gptq_gemm(a: torch.Tensor, b_q_weight: torch.Tensor,
               b_gptq_qzeros: torch.Tensor, b_gptq_scales: torch.Tensor,
               b_g_idx: torch.Tensor, use_exllama: bool,
               bit: int) -> torch.Tensor:
-    return torch.ops._C.gptq_gemm(a, b_q_weight, b_gptq_qzeros, b_gptq_scales,
+    return gptq_kernels.gptq_gemm(a, b_q_weight, b_gptq_qzeros, b_gptq_scales,
                                   b_g_idx, use_exllama, bit)
+    # return torch.ops._C.gptq_gemm(a, b_q_weight, b_gptq_qzeros, b_gptq_scales,
+    #                               b_g_idx, use_exllama, bit)
 
 
 def gptq_shuffle(q_weight: torch.Tensor, q_perm: torch.Tensor,
                  bit: int) -> None:
-    torch.ops._C.gptq_shuffle(q_weight, q_perm, bit)
+    gptq_kernels.gptq_shuffle(q_weight, q_perm, bit)
+    # torch.ops._C.gptq_shuffle(q_weight, q_perm, bit)
 
 # trans_w16
 def trans_w16_gemm(dst: torch.Tensor, src: torch.Tensor,
