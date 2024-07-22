@@ -4,11 +4,13 @@ project(vllm_extensions LANGUAGES CXX)
 
 option(VLLM_TARGET_DEVICE "Target device backend for vLLM" "cuda")
 
+set(CMAKE_BUILD_TYPE "Release")
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Target device: ${VLLM_TARGET_DEVICE}")
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/utils.cmake)
-
+add_compile_options(-w)
 #
 # Supported python versions.  These versions will be searched in order, the
 # first match will be selected.  These should be kept in sync with setup.py.
@@ -120,10 +122,11 @@ endif()
 # the supported versions for the current language.
 # The final set of arches is stored in `VLLM_GPU_ARCHES`.
 #
-override_gpu_arches(VLLM_GPU_ARCHES
-  ${VLLM_GPU_LANG}
-  "${${VLLM_GPU_LANG}_SUPPORTED_ARCHS}")
-
+#override_gpu_arches(VLLM_GPU_ARCHES
+#  ${VLLM_GPU_LANG}
+#  "${${VLLM_GPU_LANG}_SUPPORTED_ARCHS}")
+set(VLLM_GPU_ARCHES "gfx928")
+message(STATUS "${VLLM_GPU_ARCHES}")
 #
 # Query torch for additional GPU compilation flags for the given
 # `VLLM_GPU_LANG`.
