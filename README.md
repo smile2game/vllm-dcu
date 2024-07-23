@@ -15,12 +15,18 @@ vLLM是一个快速且易于使用的LLM推理和服务库，使用PageAttention
 |    LlamaForCausalLM       |    LLaMA-3        |   Yes    | Yes  |
 |    LlamaForCausalLM       |    Codellama      |   Yes    | Yes  |
 |    QWenLMHeadModel        |    QWen           |   Yes    | Yes  |
+|    Qwen2ForCausalLM       |    QWen1.5        |   Yes    | Yes  |
+|    Qwen2ForCausalLM       |    CodeQwen1.5    |   Yes    | Yes  |
+|    Qwen2ForCausalLM       |    QWen2          |   Yes    | Yes  |
+|    ChatGLMModel           |    chatglm2       |   Yes    | Yes  |
+|    ChatGLMModel           |    chatglm3       |   Yes    | Yes  |
+|    ChatGLMModel           |    glm-4          |   Yes    | Yes  |
 |    BaiChuanForCausalLM    |    Baichuan-7B    |   Yes    | Yes  |
 |    BaiChuanForCausalLM    |    Baichuan2-7B   |   Yes    | Yes  |
-|    ChatGLMModel           |    chatglm2-6b    |   Yes    | Yes  |
-|    ChatGLMModel           |    chatglm3-6b    |   Yes    | Yes  |
 |    InternLMForCausalLM    |    InternLM       |   Yes    | Yes  |
 |    InternLM2ForCausalLM   |    InternLM2      |   Yes    | Yes  |
+|    LlamaForCausalLM       |    deepseek       |   Yes    | Yes  |
+|    DeepseekV2ForCausalLM  |    DeepSeek-V2    |   Yes    | Yes  |
 |    LlamaForCausalLM       |    Yi             |   Yes    | Yes  |
 |    MixtralForCausalLM     |    Mixtral-8x7B   |   Yes    | Yes  |
 
@@ -56,6 +62,10 @@ git clone http://developer.hpccube.com/codes/OpenDAS/vllm.git # 根据需要的�
 VLLM_INSTALL_PUNICA_KERNELS=1 python setup.py bdist_wheel 
 cd dist
 pip install vllm*
+cd csrc/quantization/gptq
+python setup.py bdist_wheel
+cd dist
+pip install gptq_kernel
 
 2. 源码编译安装
 VLLM_INSTALL_PUNICA_KERNELS=1 python3 setup.py install 

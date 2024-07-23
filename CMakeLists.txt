@@ -156,6 +156,7 @@ set(VLLM_EXT_SRC
   "csrc/pos_encoding_tgi_kernels.cu"
   "csrc/activation_kernels.cu"
   "csrc/layernorm_kernels.cu"
+  "csrc/transpose_kernels.cu"
   "csrc/quantization/squeezellm/quant_cuda_kernel.cu"
   "csrc/quantization/gptq/q_gemm.cu"
   "csrc/quantization/compressed_tensors/int8_quant_kernels.cu"
