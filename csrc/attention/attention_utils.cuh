@@ -124,8 +124,8 @@ inline __device__ float qk_dot_vpack_(const Vec (&q)[N], const Vec (&k)[N]) {
   for (int ii = 1; ii < N; ++ii) {
     qk_vec = fma(q[ii], k[ii], qk_vec);
   }
-  float qk = sum(qk_vec);
   // Finalize the reduction across lanes.
+  float qk = sum(qk_vec);
 #pragma unroll
   for (int mask = THREAD_GROUP_SIZE / 2; mask >= 1; mask /= 2) {
     qk += VLLM_SHFL_XOR_SYNC(qk, mask);

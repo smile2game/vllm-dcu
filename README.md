@@ -20,7 +20,6 @@ vLLM是一个快速且易于使用的LLM推理和服务库，使用PageAttention
 |    Qwen2ForCausalLM       |    QWen2          |   Yes    | Yes  |
 |    ChatGLMModel           |    chatglm2       |   Yes    | Yes  |
 |    ChatGLMModel           |    chatglm3       |   Yes    | Yes  |
-|    ChatGLMModel           |    glm-4          |   Yes    | Yes  |
 |    BaiChuanForCausalLM    |    Baichuan-7B    |   Yes    | Yes  |
 |    BaiChuanForCausalLM    |    Baichuan2-7B   |   Yes    | Yes  |
 |    InternLMForCausalLM    |    InternLM       |   Yes    | Yes  |
@@ -69,6 +68,8 @@ pip install gptq_kernel
 
 2. 源码编译安装
 VLLM_INSTALL_PUNICA_KERNELS=1 python3 setup.py install 
+cd csrc/quantization/gptq
+python setup.py install 
 ```
 
 #### 运行基础环境准备

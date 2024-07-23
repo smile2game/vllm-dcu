@@ -122,11 +122,10 @@ endif()
 # the supported versions for the current language.
 # The final set of arches is stored in `VLLM_GPU_ARCHES`.
 #
-#override_gpu_arches(VLLM_GPU_ARCHES
-#  ${VLLM_GPU_LANG}
-#  "${${VLLM_GPU_LANG}_SUPPORTED_ARCHS}")
-set(VLLM_GPU_ARCHES "gfx928")
-message(STATUS "${VLLM_GPU_ARCHES}")
+override_gpu_arches(VLLM_GPU_ARCHES
+  ${VLLM_GPU_LANG}
+  "${${VLLM_GPU_LANG}_SUPPORTED_ARCHS}")
+  
 #
 # Query torch for additional GPU compilation flags for the given
 # `VLLM_GPU_LANG`.
