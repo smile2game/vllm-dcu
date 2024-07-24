@@ -24,8 +24,8 @@ setup(
         CUDAExtension(
             name="gptq_kernels",
             sources=[
-                "./torch_bindings.cpp",
-                "./q_gemm.cu",
+                "csrc/quantization/gptq/torch_bindings.cpp",
+                "csrc/quantization/gptq/q_gemm.cu",
             ],
             extra_compile_args=extra_compile_args,
         )

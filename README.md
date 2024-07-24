@@ -59,17 +59,14 @@ git clone http://developer.hpccube.com/codes/OpenDAS/vllm.git # 根据需要的�
 ```
 1. 编译whl包并安装
 VLLM_INSTALL_PUNICA_KERNELS=1 python setup.py bdist_wheel 
+python csrc/quantization/gptq/setup.py bdist_wheel
 cd dist
 pip install vllm*
-cd csrc/quantization/gptq
-python setup.py bdist_wheel
-cd dist
 pip install gptq_kernel
 
 2. 源码编译安装
 VLLM_INSTALL_PUNICA_KERNELS=1 python3 setup.py install 
-cd csrc/quantization/gptq
-python setup.py install 
+python csrc/quantization/gptq/setup.py install 
 ```
 
 #### 运行基础环境准备
