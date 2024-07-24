@@ -22,7 +22,8 @@ def set_default_torch_dtype(dtype: torch.dtype):
 def get_model_architecture(
         model_config: ModelConfig) -> Tuple[Type[nn.Module], str]:
     architectures = getattr(model_config.hf_config, "architectures", [])
-    if architectures == ['LlamaForCausalLM'] or architectures == ['QWenLMHeadModel'] or architectures == ['Qwen2ForCausalLM']  or architectures == ['ChatGLMModel'] or architectures == ['BaichuanForCausalLM']:
+    support_nn_architectures = ['LlamaForCausalLM', 'QWenLMHeadModel', 'Qwen2ForCausalLM', 'ChatGLMModel', 'BaichuanForCausalLM']  
+    if any(arch in architectures for arch in support_nn_architectures): 
         if os.getenv('LLAMA_NN') != '0': 
             os.environ['LLAMA_NN'] = '1'
     else:
