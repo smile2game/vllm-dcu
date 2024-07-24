@@ -16,6 +16,7 @@ from vllm.model_executor.layers.quantization.base_config import (
 from vllm.model_executor.utils import set_weight_attrs
 
 import os
+from vllm.model_executor.utils import gemm_bank_conf
 
 logger = init_logger(__name__)
 
@@ -88,6 +89,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
     def __init__(self, separate_bias_add: bool = False):
         self.separate_bias_add = separate_bias_add
         self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
+        self.use_gemm_pad = os.environ.get('GEMM_PAD') == '1'
         
     def create_weights(self, layer: torch.nn.Module,
                        input_size_per_partition: int,
@@ -114,6 +116,9 @@ class UnquantizedLinearMethod(LinearMethodBase):
             return F.linear(x, weight)
         
         if self.use_llama_nn:
+            if gemm_bank_conf(weight.shape[1] - 32) and os.environ['GEMM_PAD'] == '1':
+                weight = weight[:,:-32]
+                
             if bias is not None:
                 if len(x.shape) == 2: 
                     return torch.addmm(bias, x, weight)

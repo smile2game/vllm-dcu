@@ -52,6 +52,8 @@ from vllm.sequence import SamplerOutput
 from vllm.utils import is_hip, print_warning_once
 
 from vllm import _custom_ops as ops
+from vllm.model_executor.utils import pad_weight, gemm_bank_conf
+
 
 class LlamaMLP(nn.Module):
 
@@ -159,6 +161,8 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
+        if os.environ.get('FA_PAD') == '1' and qkv.shape[-1] == 12320:
+            qkv = qkv[...,:-32]
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
@@ -364,6 +368,8 @@ class LlamaForCausalLM(nn.Module):
                                                 config.vocab_size, logit_scale)
         self.sampler = Sampler()
         self.use_llama_nn = os.environ.get('LLAMA_NN') == '1'
+        self.use_gemm_pad = os.environ.get('GEMM_PAD') == '1'
+        self.use_fa_pad = os.environ.get('FA_PAD') == '1'
 
     def forward(
         self,
@@ -452,7 +458,13 @@ class LlamaForCausalLM(nn.Module):
             
             for layername, weight in params_dict.items():
                 matches = re.findall(combined_words, layername)
-                if matches:                  
+                if matches:         
+                    if self.use_gemm_pad and gemm_bank_conf(weight.data.shape[0]):
+                        weight.data = pad_weight(weight.data, 32)  
+                        
+                    if self.use_fa_pad and weight.data.shape[0] == 12288:
+                        weight.data = pad_weight(weight.data, 32)
+                                 
                     _weight = torch.zeros_like(weight.data)
                     ori_shape =_weight.shape
                     
