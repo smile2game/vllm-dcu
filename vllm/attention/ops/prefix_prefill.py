@@ -684,7 +684,7 @@ if triton.__version__ >= "2.1.0":
                               sliding_window=None):
 
         cap = torch.cuda.get_device_capability()
-        BLOCK = 128 if cap[0] >= 8 else 64
+        BLOCK = 128 if cap[0] >= 8 else 32
         # shape constraints
         Lq, Lk, Lv = q.shape[-1], k.shape[-1], v.shape[-1]
         assert Lq == Lk and Lk == Lv
@@ -701,7 +701,7 @@ if triton.__version__ >= "2.1.0":
         if sliding_window is None or sliding_window <= 0:
             sliding_window = 0
 
-        num_warps = 8 if Lk <= 64 else 8
+        num_warps = 8 if Lk <= 64 else 4
         if alibi_slopes is not None:
             _fwd_kernel_alibi[grid](
                 q,
